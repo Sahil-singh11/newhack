@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Interactive AI Friend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .chat-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .bot-avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: gentle-bounce 2s ease-in-out infinite;
+        }
+        
+        .bot-avatar:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .bot-avatar.dog {
+            animation: dog-wag 1.5s ease-in-out infinite;
+        }
+        
+        .bot-avatar.cat {
+            animation: cat-purr 2s ease-in-out infinite;
+        }
+        
+        @keyframes gentle-bounce {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+        }
+        
+        @keyframes dog-wag {
+            0%, 100% { transform: rotate(-2deg) scale(1); }
+            25% { transform: rotate(2deg) scale(1.05); }
+            50% { transform: rotate(-1deg) scale(1); }
+            75% { transform: rotate(1deg) scale(1.05); }
+        }
+        
+        @keyframes cat-purr {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); opacity: 0.9; }
+        }
+        
+        .chat-subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .header-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .music-btn.playing {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        /* Settings Panel */
+        .settings-panel {
+            display: none;
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .settings-panel.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        .avatar-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .avatar-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+        }
+        
+        .avatar-option.selected {
+            border-color: #4facfe;
+            background: #e3f2fd;
+            transform: scale(1.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        /* Music Panel */
+        .music-panel {
+            display: none;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .music-panel.active {
+            display: block;
+        }
+        
+        .music-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .music-track {
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+        
+        .music-track:hover {
+            background: white;
+            transform: translateY(-2px);
+        }
+        
+        .music-track.playing {
+            background: #4facfe;
+            color: white;
+        }
+        
+        /* Games Panel */
+        .games-panel {
+            display: none;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .games-panel.active {
+            display: block;
+        }
+        
+        .games-grid {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .game-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            min-width: 60px;
+            height: 50px;
+        }
+        
+        .game-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        /* Other styles remain the same as in the previous artifact... */
+        .bubble-game {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: float-up 3s linear infinite;
+        }
+        
+        @keyframes float-up {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px) scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .memory-game {
+            display: none;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+        .memory-card {
+            aspect-ratio: 1;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.5em;
+            transition: all 0.3s ease;
+        }
+        
+        .memory-card.flipped {
+            background: #4facfe;
+            color: white;
+        }
+        
+        .memory-card.matched {
+            background: #28a745;
+            color: white;
+        }
+        
+        .breathing-exercise {
+            display: none;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .breathing-circle {
+            width: 150px;
+            height: 150px;
+            border: 3px solid #4facfe;
+            border-radius: 50%;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            color: #4facfe;
+            transition: all 4s ease-in-out;
+        }
+        
+        .breathing-circle.inhale {
+            transform: scale(1.3);
+            background: rgba(79, 172, 254, 0.1);
+        }
+        
+        .breathing-circle.exhale {
+            transform: scale(0.8);
+            background: rgba(79, 172, 254, 0.05);
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        
+        /* Chat styles */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            text-align: right;
+        }
+        
+        .message.bot {
+            text-align: left;
+        }
+        
+        .message-content {
+            display: inline-block;
+            padding: 15px 20px;
+            border-radius: 20px;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.4;
+            position: relative;
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-message .message-content {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #8b4513;
+            border: none;
+        }
+        
+        .message-sender {
+            font-size: 0.8em;
+            margin-bottom: 5px;
+            font-weight: 600;
+            opacity: 0.7;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            resize: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .typing-indicator {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            font-style: italic;
+            color: #6c757d;
+        }
+        
+        .clear-btn {
+            background: #dc3545;
+            font-size: 0.9em;
+            padding: 8px 15px;
+        }
+        
+        .clear-btn:hover {
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+        
+        @media (max-width: 480px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+        
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-controls">
+                <button class="header-btn music-btn" onclick="toggleMusic()" title="Music">🎵</button>
+                <button class="header-btn games-btn" onclick="toggleGames()" title="Games">🎮</button>
+                <button class="header-btn settings-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
+            </div>
+            <h1>
+                <div class="bot-avatar {{ avatar_type or 'robot' }}" id="botAvatar" onclick="petTheBot()">{{ bot_avatar or '🤖' }}</div>
+                <span id="bot-name">{{ bot_name or 'EmpathyBot' }}</span>
+            </h1>
+            <div class="chat-subtitle">Your Interactive AI Friend</div>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="form-group">
+                <label for="bot_name_input">AI Friend's Name:</label>
+                <input type="text" id="bot_name_input" name="bot_name" placeholder="Enter AI name..." value="{{ bot_name or 'EmpathyBot' }}">
+            </div>
+            <div class="form-group">
+                <label for="user_name_input">Your Name:</label>
+                <input type="text" id="user_name_input" name="user_name" placeholder="Enter your name..." value="{{ user_name or 'Friend' }}">
+            </div>
+            <div class="form-group">
+                <label>Choose Your AI Friend:</label>
+                <div class="avatar-selector">
+                    <div class="avatar-option {{ 'selected' if (bot_avatar or '🤖') == '🤖' else '' }}" data-avatar="🤖" data-type="robot" onclick="selectAvatar('🤖', 'robot')">🤖</div>
+                    <div class="avatar-option {{ 'selected' if (bot_avatar or '🤖') == '🐶' else '' }}" data-avatar="🐶" data-type="dog" onclick="selectAvatar('🐶', 'dog')">🐶</div>
+                    <div class="avatar-option {{ 'selected' if (bot_avatar or '🤖') == '🐱' else '' }}" data-avatar="🐱" data-type="cat" onclick="selectAvatar('🐱', 'cat')">🐱</div>
+                </div>
+            </div>
+            <button type="button" class="btn" onclick="saveSettings()">Save Settings</button>
+            <button type="button" class="btn btn-secondary" onclick="toggleSettings()">Cancel</button>
+        </div>
+        
+        <!-- Music Panel -->
+        <div class="music-panel" id="musicPanel">
+            <div class="music-controls">
+                <button class="music-track" onclick="playTrack('rain')">🌧️ Rain</button>
+                <button class="music-track" onclick="playTrack('forest')">🌲 Forest</button>
+                <button class="music-track" onclick="playTrack('ocean')">🌊 Ocean</button>
+                <button class="music-track" onclick="playTrack('birds')">🐦 Birds</button>
+                <button class="music-track" onclick="playTrack('meditation')">🧘 Meditation</button>
+                <button class="music-track" onclick="stopMusic()">⏹️ Stop</button>
+            </div>
+        </div>
+        
+        <!-- Games Panel -->
+        <div class="games-panel" id="gamesPanel">
+            <div class="games-grid">
+                <button class="game-btn" onclick="startBubbleGame()" title="Pop Bubbles">🫧</button>
+                <button class="game-btn" onclick="startMemoryGame()" title="Memory Game">🧠</button>
+                <button class="game-btn" onclick="startBreathingExercise()" title="Breathing">🫁</button>
+                <button class="game-btn" onclick="startColorGame()" title="Color Therapy">🎨</button>
+            </div>
+        </div>
+        
+        <!-- Game Overlays -->
+        <div class="bubble-game" id="bubbleGame">
+            <button class="close-btn" onclick="closeBubbleGame()">×</button>
+        </div>
+        
+        <div class="memory-game" id="memoryGame">
+            <button class="close-btn" onclick="closeMemoryGame()">×</button>
+            <h3>Memory Game</h3>
+            <p>Match the pairs! Score: <span id="memoryScore">0</span></p>
+            <div class="memory-grid" id="memoryGrid"></div>
+        </div>
+        
+        <div class="breathing-exercise" id="breathingExercise">
+            <button class="close-btn" onclick="closeBreathingExercise()">×</button>
+            <h3>Breathing Exercise</h3>
+            <p id="breathingInstruction">Click start to begin</p>
+            <div class="breathing-circle" id="breathingCircle">Ready</div>
+            <button class="btn" onclick="startBreathing()">Start</button>
+            <button class="btn btn-secondary" onclick="stopBreathing()">Stop</button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <!-- Initial welcome message or chat history -->
+            {% if not chat %}
+            <div class="message bot welcome-message">
+                <div class="message-sender">{{ bot_avatar or '🤖' }} {{ bot_name or 'EmpathyBot' }}</div>
+                <div class="message-content">
+                    Hi {{ user_name or 'Friend' }}! I'm {{ bot_name or 'EmpathyBot' }}, your interactive AI companion. I'm here to chat, help, and support you. Try the music 🎵 or games 🎮 above to relax! What's on your mind today? 😊
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Chat messages from database -->
+            {% for msg in chat %}
+                <div class="message user">
+                    <div class="message-sender">{{ user_name or 'You' }}</div>
+                    <div class="message-content">{{ msg.user }}</div>
+                </div>
+                <div class="message bot">
+                    <div class="message-sender">{{ msg.bot_avatar or bot_avatar or '🤖' }} {{ bot_name or 'EmpathyBot' }}</div>
+                    <div class="message-content">{{ msg.bot|safe }}</div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            {{ bot_avatar or '🤖' }} <span id="bot-name-typing">{{ bot_name or 'EmpathyBot' }}</span> is typing...
+        </div>
+        
+        <div class="chat-input">
+            <div class="input-group">
+                <input type="text" class="message-input" placeholder="Type your message..." autocomplete="off">
+                <button class="send-btn" onclick="sendMessage()" title="Send message">📤</button>
+            </div>
+            <div style="margin-top: 10px; text-align: center;">
+                <button class="btn clear-btn" onclick="clearChat()">🗑️ Clear Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let botName = '{{ bot_name or "EmpathyBot" }}';
+        let userName = '{{ user_name or "Friend" }}';
+        let currentAvatar = '{{ bot_avatar or "🤖" }}';
+        let currentAvatarType = '{{ avatar_type or "robot" }}';
+        let currentAudio = null;
+        let breathingInterval = null;
+        let bubbleInterval = null;
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let memoryScore = 0;
+
+        // Settings functions
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('active');
+            closeOtherPanels('settingsPanel');
+        }
+
+        function toggleMusic() {
+            const panel = document.getElementById('musicPanel');
+            panel.classList.toggle('active');
+            closeOtherPanels('musicPanel');
+        }
+
+        function toggleGames() {
+            const panel = document.getElementById('gamesPanel');
+            panel.classList.toggle('active');
+            closeOtherPanels('gamesPanel');
+        }
+
+        function closeOtherPanels(except) {
+            const panels = ['settingsPanel', 'musicPanel', 'gamesPanel'];
+            panels.forEach(panel => {
+                if (panel !== except) {
+                    document.getElementById(panel).classList.remove('active');
+                }
+            });
+        }
+
+        function selectAvatar(emoji, type) {
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            currentAvatar = emoji;
+            currentAvatarType = type;
+        }
+
+        async function saveSettings() {
+            const newBotName = document.getElementById('bot_name_input').value.trim() || 'EmpathyBot';
+            const newUserName = document.getElementById('user_name_input').value.trim() || 'Friend';
+            
+            const formData = new FormData();
+            formData.append('action', 'set_names');
+            formData.append('bot_name', newBotName);
+            formData.append('user_name', newUserName);
+            formData.append('bot_avatar', currentAvatar);
+            formData.append('avatar_type', currentAvatarType);
+            
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    botName = newBotName;
+                    userName = newUserName;
+                    
+                    document.getElementById('bot-name').textContent = botName;
+                    document.getElementById('bot-name-typing').textContent = botName;
+                    
+                    const avatar = document.getElementById('botAvatar');
+                    avatar.textContent = currentAvatar;
+                    avatar.className = `bot-avatar ${currentAvatarType}`;
+                    
+                    toggleSettings();
+                    addBotMessage(`Great! I'm now ${botName} and you're ${userName}. Nice to meet you! 😊`);
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Failed to save settings');
+            }
+        }
+
+        function petTheBot() {
+            const avatar = document.getElementById('botAvatar');
+            avatar.style.transform = 'scale(1.3)';
+            setTimeout(() => {
+                avatar.style.transform = '';
+            }, 200);
+            
+            const responses = [
+                "That tickles! 😊",
+                "Aww, thank you! 🥰",
+                "*purrs* That feels nice! 😸",
+                "*wags tail* I like that! 🐕",
+                "You're so sweet! 💕",
+                "*happy beep* 🤖"
+            ];
+            
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            setTimeout(() => {
+                addBotMessage(randomResponse);
+            }, 500);
+        }
+
+        // Music functions
+        function playTrack(type) {
+            stopMusic();
+            playCalming();
+            
+            document.querySelectorAll('.music-track').forEach(btn => btn.classList.remove('playing'));
+            event.target.classList.add('playing');
+            document.querySelector('.music-btn').classList.add('playing');
+            
+            addBotMessage(`Playing ${type} sounds for you 🎵 This should help you relax!`);
+        }
+
+        function playCalming() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 8);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 8);
+                
+                currentAudio = { oscillator, gainNode, audioContext };
+            } catch (error) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function stopMusic() {
+            if (currentAudio) {
+                try {
+                    currentAudio.oscillator.stop();
+                    currentAudio.audioContext.close();
+                } catch (e) {
+                    console.log('Audio already stopped');
+                }
+                currentAudio = null;
+            }
+            
+            document.querySelectorAll('.music-track').forEach(btn => btn.classList.remove('playing'));
+            document.querySelector('.music-btn').classList.remove('playing');
+        }
+
+        // Game functions (bubble game, memory game, breathing exercise, color therapy)
+        function startBubbleGame() {
+            const game = document.getElementById('bubbleGame');
+            game.style.display = 'block';
+            
+            bubbleInterval = setInterval(createBubble, 800);
+            addBotMessage("Pop the bubbles to release stress! 🫧 Each pop is a worry floating away!");
+        }
+
+        function createBubble() {
+            const game = document.getElementById('bubbleGame');
+            const bubble = document.createElement('div');
+            
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            const size = Math.random() * 50 + 30;
+            
+            bubble.className = 'bubble';
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.backgroundColor = randomColor;
+            bubble.style.left = Math.random() * (game.offsetWidth - size) + 'px';
+            bubble.style.bottom = '0px';
+            
+            bubble.addEventListener('click', function() {
+                bubble.style.transform = 'scale(0)';
+                bubble.style.opacity = '0';
+                setTimeout(() => bubble.remove(), 300);
+                
+                // Create sparkle effect
+                for (let i = 0; i < 6; i++) {
+                    createSparkle(bubble.offsetLeft + size/2, bubble.offsetTop + size/2);
+                }
+            });
+            
+            game.appendChild(bubble);
+            
+            setTimeout(() => {
+                if (bubble.parentNode) {
+                    bubble.remove();
+                }
+            }, 3000);
+        }
+
+        function createSparkle(x, y) {
+            const sparkle = document.createElement('div');
+            sparkle.innerHTML = '✨';
+            sparkle.style.position = 'absolute';
+            sparkle.style.left = x + 'px';
+            sparkle.style.top = y + 'px';
+            sparkle.style.pointerEvents = 'none';
+            sparkle.style.animation = 'sparkle 0.8s ease-out forwards';
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes sparkle {
+                    0% { transform: scale(0) rotate(0deg); opacity: 1; }
+                    100% { transform: scale(1.5) rotate(360deg) translateY(-50px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.getElementById('bubbleGame').appendChild(sparkle);
+            setTimeout(() => sparkle.remove(), 800);
+        }
+
+        function closeBubbleGame() {
+            document.getElementById('bubbleGame').style.display = 'none';
+            clearInterval(bubbleInterval);
+            addBotMessage("Great job! How do you feel after popping those bubbles? 😊");
+        }
+
+        function startMemoryGame() {
+            const game = document.getElementById('memoryGame');
+            game.style.display = 'block';
+            
+            const emojis = ['🐶', '🐱', '🦋', '🌸', '⭐', '🌈', '🍀', '💎'];
+            const gameEmojis = [...emojis, ...emojis];
+            gameEmojis.sort(() => Math.random() - 0.5);
+            
+            memoryCards = gameEmojis;
+            flippedCards = [];
+            matchedPairs = 0;
+            memoryScore = 0;
+            
+            const grid = document.getElementById('memoryGrid');
+            grid.innerHTML = '';
+            
+            gameEmojis.forEach((emoji, index) => {
+                const card = document.createElement('button');
+                card.className = 'memory-card';
+                card.dataset.emoji = emoji;
+                card.dataset.index = index;
+                card.addEventListener('click', flipCard);
+                grid.appendChild(card);
+            });
+            
+            updateMemoryScore();
+            addBotMessage("Let's exercise your memory! Find matching pairs 🧠");
+        }
+
+        function flipCard() {
+            if (flippedCards.length === 2) return;
+            if (this.classList.contains('flipped')) return;
+            
+            this.classList.add('flipped');
+            this.textContent = this.dataset.emoji;
+            flippedCards.push(this);
+            
+            if (flippedCards.length === 2) {
+                setTimeout(checkMatch, 1000);
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            
+            if (card1.dataset.emoji === card2.dataset.emoji) {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                memoryScore += 10;
+                
+                if (matchedPairs === 8) {
+                    setTimeout(() => {
+                        addBotMessage(`Congratulations! You completed the memory game with a score of ${memoryScore}! 🎉`);
+                        closeMemoryGame();
+                    }, 500);
+                }
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                card1.textContent = '';
+                card2.textContent = '';
+                memoryScore = Math.max(0, memoryScore - 2);
+            }
+            
+            flippedCards = [];
+            updateMemoryScore();
+        }
+
+        function updateMemoryScore() {
+            document.getElementById('memoryScore').textContent = memoryScore;
+        }
+
+        function closeMemoryGame() {
+            document.getElementById('memoryGame').style.display = 'none';
+        }
+
+        function startBreathingExercise() {
+            document.getElementById('breathingExercise').style.display = 'block';
+            addBotMessage("Let's practice some calming breathing together 🫁 This will help reduce stress!");
+        }
+
+        function startBreathing() {
+            const circle = document.getElementById('breathingCircle');
+            const instruction = document.getElementById('breathingInstruction');
+            let isInhaling = true;
+            
+            function breatheCycle() {
+                if (isInhaling) {
+                    circle.classList.remove('exhale');
+                    circle.classList.add('inhale');
+                    circle.textContent = 'Breathe In';
+                    instruction.textContent = 'Breathe in slowly through your nose...';
+                } else {
+                    circle.classList.remove('inhale');
+                    circle.classList.add('exhale');
+                    circle.textContent = 'Breathe Out';
+                    instruction.textContent = 'Breathe out slowly through your mouth...';
+                }
+                isInhaling = !isInhaling;
+            }
+            
+            breatheCycle();
+            breathingInterval = setInterval(breatheCycle, 4000);
+        }
+
+        function stopBreathing() {
+            clearInterval(breathingInterval);
+            const circle = document.getElementById('breathingCircle');
+            circle.classList.remove('inhale', 'exhale');
+            circle.textContent = 'Ready';
+            document.getElementById('breathingInstruction').textContent = 'Click start to begin';
+        }
+
+        function closeBreathingExercise() {
+            document.getElementById('breathingExercise').style.display = 'none';
+            stopBreathing();
+            addBotMessage("Great breathing session! How do you feel now? 😌");
+        }
+
+        function startColorGame() {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#a8e6cf', '#fdcb6e'];
+            let currentColor = 0;
+            
+            function changeBackgroundColor() {
+                document.body.style.background = `linear-gradient(135deg, ${colors[currentColor]} 0%, ${colors[(currentColor + 1) % colors.length]} 100%)`;
+                currentColor = (currentColor + 1) % colors.length;
+            }
+            
+            const colorInterval = setInterval(changeBackgroundColor, 2000);
+            changeBackgroundColor();
+            
+            addBotMessage("Enjoy the calming colors! 🎨 Let them wash over you for a moment of peace.");
+            
+            setTimeout(() => {
+                clearInterval(colorInterval);
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                addBotMessage("How did those colors make you feel? Color therapy can be very soothing! 😊");
+            }, 20000);
+        }
+
+        // Chat functions
+        function addBotMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            messageDiv.innerHTML = `
+                <div class="message-sender">${currentAvatar} ${botName}</div>
+                <div class="message-content">${message}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addUserMessage(message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-sender">${userName}</div>
+                <div class="message-content">${message}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.querySelector('.message-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addUserMessage(message);
+            input.value = '';
+            
+            // Show typing indicator
+            document.getElementById('typingIndicator').style.display = 'block';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'chat');
+                formData.append('message', message);
+                
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('typingIndicator').style.display = 'none';
+                
+                if (result.status === 'success') {
+                    addBotMessage(result.bot_response);
+                } else {
+                    addBotMessage("I'm having some trouble right now. Please try again! 😊");
+                }
+            } catch (error) {
+                document.getElementById('typingIndicator').style.display = 'none';
+                console.error('Error sending message:', error);
+                addBotMessage("I'm having some connection issues. Please try again! 😊");
+            }
+        }
+
+        async function clearChat() {
+            if (confirm('Are you sure you want to clear all messages? This cannot be undone.')) {
+                try {
+                    const formData = new FormData();
+                    formData.append('action', 'clear');
+                    
+                    const response = await fetch('/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        const chatMessages = document.getElementById('chatMessages');
+                        chatMessages.innerHTML = `
+                            <div class="message bot welcome-message">
+                                <div class="message-sender">${currentAvatar} ${botName}</div>
+                                <div class="message-content">
+                                    Hi ${userName}! I'm ${botName}, your interactive AI companion. I'm here to chat, help, and support you. Try the music 🎵 or games 🎮 above to relax! What's on your mind today? 😊
+                                </div>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                    alert('Failed to clear chat');
+                }
+            }
+        }
+
+        // Event listeners
+        document.querySelector('.message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-focus input on load
+        document.querySelector('.message-input').focus();
+
+        // Auto-scroll to bottom on page load
+        window.addEventListener('load', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
+</body>
+</html>
