@@ -61,23 +61,45 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
-        /* Fixed text input styling */
         .text-input {
-            color: #1f2937 !important; /* Dark gray text */
-            background: rgba(255, 255, 255, 0.9) !important; /* Semi-transparent white background */
+            color: #1f2937 !important;
+            background: rgba(255, 255, 255, 0.9) !important;
         }
         
         .text-input::placeholder {
-            color: #6b7280 !important; /* Gray placeholder text */
+            color: #6b7280 !important;
         }
         
         .text-input:focus {
-            background: rgba(255, 255, 255, 1) !important; /* Solid white when focused */
+            background: rgba(255, 255, 255, 1) !important;
             color: #1f2937 !important;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+        }
+
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #16a34a;
         }
     </style>
 </head>
 <body>
+    <nav class="bg-white/10 backdrop-blur-lg border-b border-white/20 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">AI Health Assistant</h1>
+            <div class="space-x-4">
+                <a href="/" class="hover:underline">Home</a>
+                <a href="/dashboard" class="hover:underline">Dashboard</a>
+                <a href="/logout" class="hover:underline bg-red-500/20 px-3 py-1 rounded">Logout</a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container mx-auto px-4 py-6 max-w-4xl">
         <!-- Chat Container -->
         <div class="glass-effect rounded-2xl p-6 chat-container overflow-hidden">
@@ -90,7 +112,7 @@
                             🤖
                         </div>
                         <div class="glass-effect rounded-2xl p-4 max-w-md">
-                            <p class="text-sm text-white">Hello! I'm your AI Health Companion. I'm here to help you with:</p>
+                            <p class="text-sm text-white">Hello! I'm your AI Health Assistant powered by Llama 3. I'm here to help you with:</p>
                             <ul class="text-xs mt-2 space-y-1 opacity-90 text-white">
                                 <li>• Symptom analysis and guidance</li>
                                 <li>• Health tracking and reminders</li>
@@ -147,31 +169,16 @@
                 </button>
             </div>
         </div>
+
+        <!-- Status indicator -->
+        <div id="status-indicator" class="mt-2 text-center text-sm text-white/70 hidden">
+            <span id="status-text"></span>
+        </div>
     </div>
 
     <script>
         let conversationHistory = [];
-        let userProfile = {
-            name: '',
-            age: '',
-            conditions: ''
-        };
-
-        // Load saved profile (using in-memory storage for demo)
-        const mockStorage = {};
-        
-        function loadProfile() {
-            const saved = JSON.parse(mockStorage['healthbot_profile'] || '{}');
-            userProfile = {...userProfile, ...saved};
-        }
-
-        function saveProfile() {
-            mockStorage['healthbot_profile'] = JSON.stringify(userProfile);
-            
-            if (userProfile.name) {
-                addBotMessage(`Thanks ${userProfile.name}! I've updated your profile. This helps me give you more personalized advice.`);
-            }
-        }
+        let isProcessing = false;
 
         function handleKeyPress(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -180,11 +187,16 @@
             }
         }
 
-        function sendMessage() {
+        async function sendMessage() {
+            if (isProcessing) return;
+            
             const input = document.getElementById('user-input');
             const message = input.value.trim();
             
             if (!message) return;
+            
+            // Disable input while processing
+            setProcessingState(true);
             
             addUserMessage(message);
             input.value = '';
@@ -192,12 +204,82 @@
             // Show typing indicator
             showTypingIndicator();
             
-            // Simulate bot response after delay
-            setTimeout(() => {
+            try {
+                // Send message to backend
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
                 hideTypingIndicator();
-                const response = generateBotResponse(message);
-                addBotMessage(response);
-            }, 1000 + Math.random() * 2000);
+                
+                if (data.response) {
+                    addBotMessage(data.response);
+                } else {
+                    addBotMessage("I'm sorry, I couldn't process your message right now. Please try again.");
+                }
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                hideTypingIndicator();
+                
+                let errorMessage = "I'm having trouble connecting right now. ";
+                
+                if (error.message.includes('401')) {
+                    errorMessage += "Please log in again.";
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else if (error.message.includes('500')) {
+                    errorMessage += "There's an issue with the AI service. Please try again in a moment.";
+                } else {
+                    errorMessage += "Please check your connection and try again.";
+                }
+                
+                addErrorMessage(errorMessage);
+            } finally {
+                setProcessingState(false);
+            }
+        }
+
+        function setProcessingState(processing) {
+            isProcessing = processing;
+            const sendBtn = document.getElementById('send-btn');
+            const input = document.getElementById('user-input');
+            
+            sendBtn.disabled = processing;
+            input.disabled = processing;
+            
+            if (processing) {
+                sendBtn.classList.add('opacity-50');
+                showStatus('Processing your message...');
+            } else {
+                sendBtn.classList.remove('opacity-50');
+                hideStatus();
+            }
+        }
+
+        function showStatus(message) {
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+            text.textContent = message;
+            indicator.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            const indicator = document.getElementById('status-indicator');
+            indicator.classList.add('hidden');
         }
 
         function addUserMessage(message) {
@@ -207,7 +289,7 @@
             
             messageDiv.innerHTML = `
                 <div class="bg-white/30 rounded-2xl p-3 max-w-md">
-                    <p class="text-sm text-white">${message}</p>
+                    <p class="text-sm text-white">${escapeHtml(message)}</p>
                 </div>
             `;
             
@@ -222,13 +304,16 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'chat-bubble';
             
+            // Convert newlines to HTML breaks and handle basic formatting
+            const formattedMessage = formatBotMessage(message);
+            
             messageDiv.innerHTML = `
                 <div class="flex items-start space-x-3">
                     <div class="bot-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm">
                         🤖
                     </div>
                     <div class="glass-effect rounded-2xl p-3 max-w-md">
-                        <p class="text-sm text-white">${message}</p>
+                        <div class="text-sm text-white">${formattedMessage}</div>
                     </div>
                 </div>
             `;
@@ -237,6 +322,51 @@
             scrollToBottom();
             
             conversationHistory.push({role: 'bot', message: message});
+        }
+
+        function addErrorMessage(message) {
+            const chatContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-bubble';
+            
+            messageDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm bg-red-500">
+                        ⚠️
+                    </div>
+                    <div class="error-message rounded-2xl p-3 max-w-md">
+                        <p class="text-sm">${escapeHtml(message)}</p>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function formatBotMessage(message) {
+            // Escape HTML first
+            let formatted = escapeHtml(message);
+            
+            // Convert newlines to breaks
+            formatted = formatted.replace(/\n/g, '<br>');
+            
+            // Handle bullet points
+            formatted = formatted.replace(/• /g, '<br>• ');
+            
+            // Handle numbered lists
+            formatted = formatted.replace(/(\d+\. )/g, '<br>$1');
+            
+            // Clean up extra breaks at the beginning
+            formatted = formatted.replace(/^(<br>)+/, '');
+            
+            return formatted;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function showTypingIndicator() {
@@ -283,67 +413,28 @@
             };
             
             const message = actions[action];
-            addUserMessage(message);
-            
-            showTypingIndicator();
-            setTimeout(() => {
-                hideTypingIndicator();
-                const response = generateBotResponse(message, action);
-                addBotMessage(response);
-            }, 1000);
+            document.getElementById('user-input').value = message;
+            sendMessage();
         }
 
-        function generateBotResponse(userMessage, quickAction = null) {
-            const message = userMessage.toLowerCase();
-            const userName = userProfile.name ? userProfile.name : 'there';
-            
-            // Emergency responses
-            if (message.includes('emergency') || message.includes('urgent') || message.includes('chest pain') || message.includes('can\'t breathe')) {
-                return `🚨 ${userName}, if this is a medical emergency, please call 911 immediately or go to the nearest emergency room. Your safety is my top priority. For chest pain, difficulty breathing, or severe symptoms, don't wait - seek immediate medical attention.`;
-            }
-            
-            // Symptom analysis
-            if (message.includes('symptom') || message.includes('pain') || message.includes('hurt') || message.includes('sick') || message.includes('feel')) {
-                return `I understand you're not feeling well, ${userName}. Can you tell me more about your symptoms? For example:<br><br>• Where is the discomfort located?<br>• When did it start?<br>• How would you rate the severity (1-10)?<br>• Any other symptoms?<br><br>Remember, I can provide general guidance, but it's always best to consult with a healthcare professional for proper diagnosis and treatment. 💙`;
-            }
-            
-            // Vitals logging
-            if (message.includes('vital') || message.includes('blood pressure') || message.includes('heart rate') || message.includes('temperature')) {
-                return `Great idea to track your vitals, ${userName}! 📊 Regular monitoring helps identify patterns. What measurements would you like to log?<br><br>• Blood pressure (systolic/diastolic)<br>• Heart rate (bpm)<br>• Temperature (°F)<br>• Weight<br>• Blood sugar (if applicable)<br><br>You can tell me the values and I'll help you understand if they're in normal ranges. What would you like to record?`;
-            }
-            
-            // Wellness and general health
-            if (message.includes('wellness') || message.includes('healthy') || message.includes('tips') || message.includes('advice')) {
-                const tips = [
-                    "Stay hydrated - aim for 8 glasses of water daily 💧",
-                    "Get 7-9 hours of quality sleep each night 😴",
-                    "Take a 10-minute walk outdoors for fresh air and movement 🚶‍♂️",
-                    "Practice deep breathing for 5 minutes to reduce stress 🧘‍♀️",
-                    "Eat colorful fruits and vegetables for essential nutrients 🥗"
-                ];
-                const randomTip = tips[Math.floor(Math.random() * tips.length)];
-                
-                return `Here's a wellness tip for you, ${userName}: ${randomTip}<br><br>Small daily habits make a big difference in your overall health! Is there a specific area of wellness you'd like to focus on? I'm here to support your health journey. 🌟`;
-            }
-            
-            // Greetings and mood
-            if (message.includes('hello') || message.includes('hi') || message.includes('how are you')) {
-                return `Hello ${userName}! 😊 I'm doing well and ready to help you with your health needs. How are you feeling today? Remember, I'm here to support you with any health questions or concerns you might have.`;
-            }
-            
-            // Default supportive response
-            const supportiveResponses = [
-                `Thank you for sharing that with me, ${userName}. I'm here to listen and help. Can you tell me more about what's on your mind regarding your health?`,
-                `I appreciate you reaching out, ${userName}. Your health and wellbeing matter to me. What specific aspect would you like guidance on?`,
-                `I'm glad you're taking an active role in your health, ${userName}. How can I best support you today?`
-            ];
-            
-            return supportiveResponses[Math.floor(Math.random() * supportiveResponses.length)];
-        }
-
-        // Initialize
+        // Initialize chat on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadProfile();
+            // Check if user is authenticated by trying to make a test request
+            fetch('/dashboard')
+                .then(response => {
+                    if (!response.ok && response.status === 401) {
+                        window.location.href = '/login';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking authentication:', error);
+                });
+        });
+
+        // Auto-resize textarea
+        document.getElementById('user-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         });
     </script>
 </body>
