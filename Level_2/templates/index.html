@@ -1,9 +1,25 @@
-<!DOCTYPE html>
+html += `
+                    <div class="track-item" onclick="playTrack('${track.name}', '${emotion}', this)">
+                        <span class="track-playing" style="display: none;">🎵</span>
+                        <div class="volume-indicator">
+                            <div class="volume-bar"></div>
+                            <div class="volume-bar"></div>
+                            <div class="volume-bar"></div>
+                            <div class="volume-bar"></div>
+                            <div class="volume-bar"></div>
+                        </div>
+                        <div class="track-name">${typeIcon[track.type] || '🎵'} ${track.name}</div>
+                        <div class="track-details">
+                            <span>${track.frequency}</span>
+                            <span>${track.duration}</span>
+                        </div>
+                    </div>
+                `;<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your AI Friend</title>
+    <title>{{ bot_name }} - Your AI Friend</title>
     <style>
         * {
             margin: 0;
@@ -67,10 +83,15 @@
             margin-top: 5px;
         }
         
-        .settings-btn {
+        .header-buttons {
             position: absolute;
             top: 20px;
             right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-btn {
             background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
@@ -79,11 +100,20 @@
             cursor: pointer;
             font-size: 1.1em;
             transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
         }
         
         .settings-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: rotate(90deg);
+            transform: rotate(90deg) scale(1.1);
         }
         
         .settings-panel {
@@ -143,98 +173,313 @@
             background: #6c757d;
         }
         
+        /* Music Therapy Modal */
+        .music-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .music-modal.active {
+            display: flex;
+        }
+        
+        .music-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .music-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .music-header h2 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .music-description {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        
+        .emotion-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .emotion-btn {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .emotion-btn:hover {
+            border-color: #4facfe;
+            background: #f8f9ff;
+        }
+        
+        .emotion-btn.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-color: #4facfe;
+        }
+        
+        .track-list {
+            margin-top: 20px;
+        }
+        
+        .track-item {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .track-item:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .track-item.playing {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .track-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .track-details {
+            font-size: 0.8em;
+            opacity: 0.7;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .track-playing {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.2em;
+            animation: musicPulse 1.5s infinite;
+        }
+
+        .track-item.playing {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .track-item.playing .track-playing {
+            animation: musicPulse 0.8s infinite;
+        }
+
+        .volume-indicator {
+            position: absolute;
+            bottom: 5px;
+            left: 15px;
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .track-item.playing .volume-indicator {
+            opacity: 1;
+        }
+
+        .volume-bar {
+            width: 3px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 1px;
+            animation: volumeBars 0.5s infinite;
+        }
+
+        .volume-bar:nth-child(2) { animation-delay: 0.1s; }
+        .volume-bar:nth-child(3) { animation-delay: 0.2s; }
+        .volume-bar:nth-child(4) { animation-delay: 0.3s; }
+        .volume-bar:nth-child(5) { animation-delay: 0.4s; }
+        
+        @keyframes musicPulse {
+            0%, 100% { 
+                opacity: 1; 
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.6; 
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes volumeBars {
+            0%, 100% { 
+                height: 4px; 
+                opacity: 0.5;
+            }
+            50% { 
+                height: 12px; 
+                opacity: 1;
+            }
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
         .chat-messages {
             flex: 1;
-            overflow-y: auto;
             padding: 20px;
+            overflow-y: auto;
             background: #f8f9fa;
         }
         
         .message {
             margin-bottom: 20px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
         }
         
         .message.user {
-            text-align: right;
+            flex-direction: row-reverse;
         }
         
-        .message.bot {
-            text-align: left;
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
         }
         
         .message-content {
-            display: inline-block;
+            background: white;
             padding: 15px 20px;
             border-radius: 20px;
             max-width: 80%;
-            word-wrap: break-word;
-            line-height: 1.4;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: relative;
         }
         
         .message.user .message-content {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border-bottom-right-radius: 5px;
         }
         
         .message.bot .message-content {
             background: white;
             color: #333;
-            border: 1px solid #e9ecef;
-            border-bottom-left-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         
-        .welcome-message .message-content {
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            color: #8b4513;
-            border: none;
+        .message-content::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
         }
         
-        .message-sender {
-            font-size: 0.8em;
-            margin-bottom: 5px;
-            font-weight: 600;
-            opacity: 0.7;
+        .message.bot .message-content::before {
+            left: -16px;
+            border-right-color: white;
+        }
+        
+        .message.user .message-content::before {
+            right: -16px;
+            border-left-color: #667eea;
         }
         
         .chat-input {
             padding: 20px;
             background: white;
             border-top: 1px solid #e9ecef;
-        }
-        
-        .input-group {
             display: flex;
             gap: 10px;
             align-items: center;
         }
         
-        .message-input {
+        .chat-input input {
             flex: 1;
             padding: 15px 20px;
             border: 2px solid #e9ecef;
             border-radius: 25px;
             font-size: 16px;
-            resize: none;
+            outline: none;
             transition: border-color 0.3s ease;
         }
         
-        .message-input:focus {
-            outline: none;
+        .chat-input input:focus {
             border-color: #4facfe;
         }
         
@@ -247,6 +492,8 @@
             cursor: pointer;
             font-size: 1.2em;
             transition: all 0.3s ease;
+            width: 50px;
+            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -257,30 +504,98 @@
             box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
         }
         
-        .send-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+        .music-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            margin-right: 10px;
+        }
+        
+        .music-btn:hover {
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .empty-chat {
+            text-align: center;
+            color: #666;
+            margin-top: 50px;
+        }
+        
+        .empty-chat h3 {
+            margin-bottom: 10px;
+            color: #4facfe;
         }
         
         .typing-indicator {
             display: none;
-            text-align: center;
-            padding: 10px;
-            font-style: italic;
-            color: #6c757d;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         
-        .clear-btn {
-            background: #dc3545;
-            font-size: 0.9em;
-            padding: 8px 15px;
+        .typing-indicator.active {
+            display: flex;
         }
         
-        .clear-btn:hover {
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4facfe;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+        
+        .crisis-alert {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .crisis-alert h4 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .crisis-alert p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .crisis-alert strong {
+            display: block;
+            margin-top: 10px;
+        }
+        
+        /* Responsive Design */
         @media (max-width: 480px) {
             .chat-container {
                 height: 100vh;
@@ -288,196 +603,838 @@
                 max-width: 100%;
             }
             
-            body {
-                padding: 0;
+            .emotion-buttons {
+                grid-template-columns: 1fr;
             }
-        }
-        
-        /* Scrollbar styling */
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .chat-messages::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-        }
-        
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            
+            .music-content {
+                width: 95%;
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
+        <!-- Header -->
         <div class="chat-header">
-            <button class="settings-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
+            <div class="header-buttons">
+                <button class="header-btn music-btn" onclick="openMusicModal()" title="Music Therapy">
+                    🎵
+                </button>
+                <button class="header-btn settings-btn" onclick="toggleSettings()" title="Settings">
+                    ⚙️
+                </button>
+                <button class="header-btn" onclick="clearChat()" title="Clear Chat">
+                    🗑️
+                </button>
+            </div>
             <h1>
                 <div class="bot-avatar">🤖</div>
-                <span id="bot-name">{{ bot_name or 'Alex' }}</span>
+                {{ bot_name }}
             </h1>
-            <div class="chat-subtitle">Your AI Friend</div>
+            <div class="chat-subtitle">Here to listen and support you 💙</div>
         </div>
-        
+
+        <!-- Settings Panel -->
         <div class="settings-panel" id="settingsPanel">
-            <form method="post" id="settingsForm">
+            <form method="POST">
                 <input type="hidden" name="action" value="set_names">
                 <div class="form-group">
-                    <label for="bot_name_input">AI Friend's Name:</label>
-                    <input type="text" id="bot_name_input" name="bot_name" placeholder="Enter AI name..." value="{{ bot_name or 'Alex' }}">
+                    <label for="user_name">Your Name:</label>
+                    <input type="text" name="user_name" value="{{ user_name }}" placeholder="Enter your name">
                 </div>
                 <div class="form-group">
-                    <label for="user_name_input">Your Name:</label>
-                    <input type="text" id="user_name_input" name="user_name" placeholder="Enter your name..." value="{{ user_name or 'Friend' }}">
+                    <label for="bot_name">Bot Name:</label>
+                    <input type="text" name="bot_name" value="{{ bot_name }}" placeholder="Enter bot name">
                 </div>
-                <button type="submit" class="btn">Save Names</button>
+                <button type="submit" class="btn">Save Changes</button>
                 <button type="button" class="btn btn-secondary" onclick="toggleSettings()">Cancel</button>
             </form>
         </div>
-        
+
+        <!-- Chat Messages -->
         <div class="chat-messages" id="chatMessages">
-            <!-- Initial welcome message (only show if no chat history) -->
-            {% if not chat %}
-            <div class="message bot welcome-message">
-                <div class="message-sender">🤖 {{ bot_name or 'Alex' }}</div>
-                <div class="message-content">
-                    Hi {{ user_name or 'Friend' }}! I'm {{ bot_name or 'Alex' }}, your AI companion. I'm here to chat, help, and support you. What's on your mind today? 😊
+            {% if chat %}
+                {% for message in chat %}
+                    <div class="message user">
+                        <div class="message-avatar">{{ user_name[0].upper() }}</div>
+                        <div class="message-content">{{ message.user }}</div>
+                    </div>
+                    <div class="message bot">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">{{ message.bot|safe }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-chat">
+                    <h3>👋 Hello {{ user_name }}!</h3>
+                    <p>I'm {{ bot_name }}, your AI companion. I'm here to listen, support, and chat with you.</p>
+                    <p>Feel free to share what's on your mind - I'm here for you! 💙</p>
                 </div>
-            </div>
             {% endif %}
             
-            <!-- Chat messages will appear here -->
-            {% for msg in chat %}
-                {% if msg.user %}
-                    <div class="message user">
-                        <div class="message-sender">{{ user_name or 'You' }}</div>
-                        <div class="message-content">{{ msg.user }}</div>
-                    </div>
-                {% endif %}
-                <div class="message bot">
-                    <div class="message-sender">🤖 {{ bot_name or 'Alex' }}</div>
-                    <div class="message-content">{{ msg.bot|safe }}</div>
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar">🤖</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
                 </div>
-            {% endfor %}
+            </div>
         </div>
-        
-        <div class="typing-indicator" id="typingIndicator">
-            🤖 <span id="bot-name-typing">{{ bot_name or 'Alex' }}</span> is typing...
-        </div>
-        
+
+        <!-- Chat Input -->
         <div class="chat-input">
-            <form method="post" id="chatForm">
+            <form method="POST" style="display: flex; width: 100%; gap: 10px;" onsubmit="showTyping()">
                 <input type="hidden" name="action" value="chat">
-                <div class="input-group">
-                    <input type="text" name="message" class="message-input" placeholder="Type your message..." autocomplete="off" required>
-                    <button type="submit" class="send-btn" title="Send message">📤</button>
-                </div>
+                <input type="text" name="message" placeholder="Type your message here..." required autocomplete="off">
+                <button type="submit" class="send-btn" title="Send Message">
+                    ➤
+                </button>
             </form>
-            <div style="margin-top: 10px; text-align: center;">
-                <form method="post" style="display: inline;" onsubmit="return confirmClear()">
-                    <input type="hidden" name="action" value="clear">
-                    <button type="submit" class="btn clear-btn">🗑️ Clear Chat</button>
-                </form>
+        </div>
+    </div>
+
+    <!-- Music Therapy Modal -->
+    <div class="music-modal" id="musicModal">
+        <div class="music-content">
+            <button class="close-modal" onclick="closeMusicModal()">&times;</button>
+            <div class="music-header">
+                <h2>🎵 Music Therapy</h2>
+                <p class="music-description">Choose music that matches how you're feeling to help support your emotional well-being</p>
+            </div>
+            
+            <div class="emotion-buttons">
+                <button class="emotion-btn" onclick="selectEmotion('anxiety')">
+                    😰 Anxiety
+                </button>
+                <button class="emotion-btn" onclick="selectEmotion('depression')">
+                    😢 Sadness
+                </button>
+                <button class="emotion-btn" onclick="selectEmotion('stress')">
+                    😤 Stress
+                </button>
+                <button class="emotion-btn" onclick="selectEmotion('anger')">
+                    😠 Anger
+                </button>
+                <button class="emotion-btn" onclick="selectEmotion('general')" style="grid-column: span 2;">
+                    😊 General Wellness
+                </button>
+            </div>
+            
+            <div class="track-list" id="trackList">
+                <p style="text-align: center; color: #666; margin-top: 20px;">
+                    Select an emotional state above to see recommended music therapy tracks
+                </p>
             </div>
         </div>
     </div>
 
     <script>
-        let botName = '{{ bot_name or "Alex" }}';
-        let userName = '{{ user_name or "Friend" }}';
+        let currentAudio = null;
+        let currentTrack = null;
 
+        // Settings toggle
         function toggleSettings() {
             const panel = document.getElementById('settingsPanel');
             panel.classList.toggle('active');
         }
 
-        function confirmClear() {
-            return confirm('Are you sure you want to clear all messages? This cannot be undone.');
-        }
-
-        function updateBotName(name) {
-            botName = name || 'Alex';
-            document.getElementById('bot-name').textContent = botName;
-            document.getElementById('bot-name-typing').textContent = botName;
-            
-            // Update all bot message senders
-            const botSenders = document.querySelectorAll('.message.bot .message-sender');
-            botSenders.forEach(sender => {
-                sender.textContent = `🤖 ${botName}`;
-            });
-        }
-
-        // Handle settings form submission
-        document.getElementById('settingsForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            
-            // Update names immediately
-            const newBotName = formData.get('bot_name') || 'Alex';
-            const newUserName = formData.get('user_name') || 'Friend';
-            
-            updateBotName(newBotName);
-            userName = newUserName;
-            
-            // Submit form
-            fetch('/', {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                if (response.ok) {
-                    location.reload();
-                }
-            }).catch(error => {
-                console.error('Error:', error);
-                alert('Failed to save settings');
-            });
-        });
-
-        // Handle chat form submission with typing indicator
-        document.getElementById('chatForm').addEventListener('submit', function(e) {
-            const submitBtn = this.querySelector('.send-btn');
-            const messageInput = this.querySelector('.message-input');
-            const typingIndicator = document.getElementById('typingIndicator');
-            
-            if (messageInput.value.trim()) {
-                // Show typing indicator
-                typingIndicator.style.display = 'block';
-                submitBtn.disabled = true;
-                
-                // Scroll to bottom
-                setTimeout(() => {
-                    const chatMessages = document.getElementById('chatMessages');
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 100);
+        // Clear chat
+        function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '<input type="hidden" name="action" value="clear">';
+                document.body.appendChild(form);
+                form.submit();
             }
-        });
+        }
 
-        // Auto-scroll to bottom on page load
-        window.addEventListener('load', function() {
+        // Music modal functions
+        function openMusicModal() {
+            document.getElementById('musicModal').classList.add('active');
+        }
+
+        function closeMusicModal() {
+            document.getElementById('musicModal').classList.remove('active');
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                if (currentTrack) {
+                    currentTrack.classList.remove('playing');
+                    currentTrack = null;
+                }
+            }
+        }
+
+        // Select emotion and load tracks
+        async function selectEmotion(emotion) {
+            // Update button states
+            document.querySelectorAll('.emotion-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            try {
+                const response = await fetch(`/api/music-therapy?emotion=${emotion}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTracks(data.data, emotion);
+                } else {
+                    document.getElementById('trackList').innerHTML = 
+                        '<p style="color: #ff6b6b; text-align: center;">Error loading tracks. Please try again.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching music therapy data:', error);
+                document.getElementById('trackList').innerHTML = 
+                    '<p style="color: #ff6b6b; text-align: center;">Connection error. Please check your internet connection.</p>';
+            }
+        }
+
+        // Display tracks
+        function displayTracks(therapyData, emotion) {
+            const trackList = document.getElementById('trackList');
+            let html = `
+                <h3 style="color: #4facfe; margin-bottom: 15px;">${therapyData.title}</h3>
+                <p style="color: #666; margin-bottom: 20px; font-size: 0.9em;">${therapyData.description}</p>
+            `;
+
+            therapyData.tracks.forEach((track, index) => {
+                const typeIcon = {
+                    'nature': '🌿',
+                    'instrumental': '🎹',
+                    'tone': '🔔',
+                    'guided': '🧘'
+                };
+
+                html += `
+                    <div class="track-item" onclick="playTrack('${track.name}', '${emotion}', this)">
+                        <span class="track-playing" style="display: none;">🎵</span>
+                        <div class="track-name">${typeIcon[track.type] || '🎵'} ${track.name}</div>
+                        <div class="track-details">
+                            <span>${track.frequency}</span>
+                            <span>${track.duration}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            trackList.innerHTML = html;
+        }
+
+        // Advanced music generation
+        class TherapeuticMusicGenerator {
+            constructor() {
+                this.audioContext = null;
+                this.masterGain = null;
+                this.activeNodes = [];
+                this.isPlaying = false;
+            }
+
+            async init() {
+                if (!this.audioContext) {
+                    this.audioContext = new AudioContext();
+                    this.masterGain = this.audioContext.createGain();
+                    this.masterGain.connect(this.audioContext.destination);
+                    this.masterGain.gain.value = 0.3;
+                }
+                
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+            }
+
+            stop() {
+                this.activeNodes.forEach(node => {
+                    try {
+                        if (node.stop) node.stop();
+                        if (node.disconnect) node.disconnect();
+                    } catch (e) {}
+                });
+                this.activeNodes = [];
+                this.isPlaying = false;
+            }
+
+            // Generate nature sounds
+            generateNatureSounds(type, duration) {
+                const startTime = this.audioContext.currentTime;
+                
+                switch(type.toLowerCase()) {
+                    case 'rain':
+                        this.createRainSound(startTime, duration);
+                        break;
+                    case 'ocean':
+                        this.createOceanWaves(startTime, duration);
+                        break;
+                    case 'forest':
+                        this.createForestSounds(startTime, duration);
+                        break;
+                    case 'wind':
+                        this.createWindSound(startTime, duration);
+                        break;
+                    default:
+                        this.createRainSound(startTime, duration);
+                }
+            }
+
+            createRainSound(startTime, duration) {
+                // White noise for rain base
+                const bufferSize = this.audioContext.sampleRate * 2;
+                const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                const whiteNoise = this.audioContext.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                // Filter for rain sound
+                const rainFilter = this.audioContext.createBiquadFilter();
+                rainFilter.type = 'bandpass';
+                rainFilter.frequency.value = 1000;
+                rainFilter.Q.value = 0.5;
+
+                const rainGain = this.audioContext.createGain();
+                rainGain.gain.setValueAtTime(0, startTime);
+                rainGain.gain.linearRampToValueAtTime(0.4, startTime + 2);
+                rainGain.gain.setValueAtTime(0.4, startTime + duration - 2);
+                rainGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+                whiteNoise.connect(rainFilter);
+                rainFilter.connect(rainGain);
+                rainGain.connect(this.masterGain);
+
+                whiteNoise.start(startTime);
+                whiteNoise.stop(startTime + duration);
+                
+                this.activeNodes.push(whiteNoise, rainFilter, rainGain);
+
+                // Add occasional thunder (very gentle)
+                for (let i = 0; i < 3; i++) {
+                    const thunderTime = startTime + Math.random() * duration;
+                    this.createGentleThunder(thunderTime);
+                }
+            }
+
+            createGentleThunder(startTime) {
+                const thunder = this.audioContext.createOscillator();
+                const thunderGain = this.audioContext.createGain();
+                const thunderFilter = this.audioContext.createBiquadFilter();
+
+                thunder.type = 'sawtooth';
+                thunder.frequency.setValueAtTime(40, startTime);
+                thunder.frequency.exponentialRampToValueAtTime(20, startTime + 2);
+
+                thunderFilter.type = 'lowpass';
+                thunderFilter.frequency.value = 100;
+
+                thunderGain.gain.setValueAtTime(0, startTime);
+                thunderGain.gain.linearRampToValueAtTime(0.05, startTime + 0.1);
+                thunderGain.gain.exponentialRampToValueAtTime(0.001, startTime + 3);
+
+                thunder.connect(thunderFilter);
+                thunderFilter.connect(thunderGain);
+                thunderGain.connect(this.masterGain);
+
+                thunder.start(startTime);
+                thunder.stop(startTime + 3);
+
+                this.activeNodes.push(thunder, thunderGain, thunderFilter);
+            }
+
+            createOceanWaves(startTime, duration) {
+                // Main wave oscillation
+                const wave1 = this.audioContext.createOscillator();
+                const wave2 = this.audioContext.createOscillator();
+                const waveGain = this.audioContext.createGain();
+                const waveFilter = this.audioContext.createBiquadFilter();
+
+                wave1.type = 'sine';
+                wave1.frequency.value = 0.1; // Very slow for wave rhythm
+                wave2.type = 'sine';
+                wave2.frequency.value = 0.07;
+
+                waveFilter.type = 'lowpass';
+                waveFilter.frequency.value = 800;
+
+                // LFO for wave volume modulation
+                const lfo = this.audioContext.createOscillator();
+                const lfoGain = this.audioContext.createGain();
+                lfo.type = 'sine';
+                lfo.frequency.value = 0.2;
+                lfoGain.gain.value = 0.3;
+
+                lfo.connect(lfoGain);
+                lfoGain.connect(waveGain.gain);
+
+                // White noise for foam
+                const foamNoise = this.createWhiteNoise();
+                const foamFilter = this.audioContext.createBiquadFilter();
+                const foamGain = this.audioContext.createGain();
+
+                foamFilter.type = 'highpass';
+                foamFilter.frequency.value = 2000;
+                foamGain.gain.value = 0.1;
+
+                foamNoise.connect(foamFilter);
+                foamFilter.connect(foamGain);
+                foamGain.connect(this.masterGain);
+
+                waveGain.gain.setValueAtTime(0, startTime);
+                waveGain.gain.linearRampToValueAtTime(0.6, startTime + 3);
+                waveGain.gain.setValueAtTime(0.6, startTime + duration - 3);
+                waveGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+                wave1.connect(waveFilter);
+                wave2.connect(waveFilter);
+                waveFilter.connect(waveGain);
+                waveGain.connect(this.masterGain);
+
+                lfo.start(startTime);
+                wave1.start(startTime);
+                wave2.start(startTime);
+                foamNoise.start(startTime);
+
+                lfo.stop(startTime + duration);
+                wave1.stop(startTime + duration);
+                wave2.stop(startTime + duration);
+                foamNoise.stop(startTime + duration);
+
+                this.activeNodes.push(wave1, wave2, lfo, foamNoise, waveGain, lfoGain, foamGain, waveFilter, foamFilter);
+            }
+
+            createForestSounds(startTime, duration) {
+                // Wind through trees
+                const wind = this.createWhiteNoise();
+                const windFilter = this.audioContext.createBiquadFilter();
+                const windGain = this.audioContext.createGain();
+
+                windFilter.type = 'bandpass';
+                windFilter.frequency.value = 300;
+                windFilter.Q.value = 0.3;
+
+                windGain.gain.setValueAtTime(0, startTime);
+                windGain.gain.linearRampToValueAtTime(0.2, startTime + 4);
+
+                // Add gentle modulation to wind
+                const windLfo = this.audioContext.createOscillator();
+                const windLfoGain = this.audioContext.createGain();
+                windLfo.type = 'sine';
+                windLfo.frequency.value = 0.1;
+                windLfoGain.gain.value = 0.1;
+
+                windLfo.connect(windLfoGain);
+                windLfoGain.connect(windGain.gain);
+
+                wind.connect(windFilter);
+                windFilter.connect(windGain);
+                windGain.connect(this.masterGain);
+
+                wind.start(startTime);
+                windLfo.start(startTime);
+                wind.stop(startTime + duration);
+                windLfo.stop(startTime + duration);
+
+                // Random bird chirps
+                for (let i = 0; i < 8; i++) {
+                    const birdTime = startTime + 5 + Math.random() * (duration - 10);
+                    this.createBirdChirp(birdTime);
+                }
+
+                this.activeNodes.push(wind, windFilter, windGain, windLfo, windLfoGain);
+            }
+
+            createBirdChirp(startTime) {
+                const bird = this.audioContext.createOscillator();
+                const birdGain = this.audioContext.createGain();
+                const birdFilter = this.audioContext.createBiquadFilter();
+
+                bird.type = 'sine';
+                const baseFreq = 800 + Math.random() * 1200;
+                bird.frequency.setValueAtTime(baseFreq, startTime);
+                bird.frequency.setValueAtTime(baseFreq * 1.5, startTime + 0.1);
+                bird.frequency.setValueAtTime(baseFreq * 0.8, startTime + 0.3);
+
+                birdFilter.type = 'lowpass';
+                birdFilter.frequency.value = 3000;
+
+                birdGain.gain.setValueAtTime(0, startTime);
+                birdGain.gain.linearRampToValueAtTime(0.1, startTime + 0.05);
+                birdGain.gain.linearRampToValueAtTime(0, startTime + 0.4);
+
+                bird.connect(birdFilter);
+                birdFilter.connect(birdGain);
+                birdGain.connect(this.masterGain);
+
+                bird.start(startTime);
+                bird.stop(startTime + 0.5);
+
+                this.activeNodes.push(bird, birdGain, birdFilter);
+            }
+
+            createWindSound(startTime, duration) {
+                const wind = this.createWhiteNoise();
+                const windFilter1 = this.audioContext.createBiquadFilter();
+                const windFilter2 = this.audioContext.createBiquadFilter();
+                const windGain = this.audioContext.createGain();
+
+                windFilter1.type = 'highpass';
+                windFilter1.frequency.value = 100;
+                windFilter2.type = 'lowpass';
+                windFilter2.frequency.value = 1000;
+
+                // Gentle swelling wind
+                const windLfo = this.audioContext.createOscillator();
+                const windLfoGain = this.audioContext.createGain();
+                windLfo.type = 'sine';
+                windLfo.frequency.value = 0.05; // Very slow
+                windLfoGain.gain.value = 0.2;
+
+                windLfo.connect(windLfoGain);
+                windLfoGain.connect(windGain.gain);
+
+                windGain.gain.setValueAtTime(0.1, startTime);
+
+                wind.connect(windFilter1);
+                windFilter1.connect(windFilter2);
+                windFilter2.connect(windGain);
+                windGain.connect(this.masterGain);
+
+                wind.start(startTime);
+                windLfo.start(startTime);
+                wind.stop(startTime + duration);
+                windLfo.stop(startTime + duration);
+
+                this.activeNodes.push(wind, windFilter1, windFilter2, windGain, windLfo, windLfoGain);
+            }
+
+            // Generate healing tones
+            generateHealingTones(frequency, duration) {
+                const startTime = this.audioContext.currentTime;
+                
+                // Primary tone
+                const primaryOsc = this.audioContext.createOscillator();
+                const primaryGain = this.audioContext.createGain();
+                
+                primaryOsc.type = 'sine';
+                primaryOsc.frequency.value = frequency;
+                
+                // Harmonic
+                const harmonicOsc = this.audioContext.createOscillator();
+                const harmonicGain = this.audioContext.createGain();
+                
+                harmonicOsc.type = 'sine';
+                harmonicOsc.frequency.value = frequency * 1.5; // Perfect fifth
+                harmonicGain.gain.value = 0.3;
+                
+                // Sub harmonic for depth
+                const subOsc = this.audioContext.createOscillator();
+                const subGain = this.audioContext.createGain();
+                
+                subOsc.type = 'sine';
+                subOsc.frequency.value = frequency * 0.5;
+                subGain.gain.value = 0.4;
+
+                // Gentle amplitude modulation for "breathing" effect
+                const lfo = this.audioContext.createOscillator();
+                const lfoGain = this.audioContext.createGain();
+                lfo.type = 'sine';
+                lfo.frequency.value = 0.3; // Slow breathing rate
+                lfoGain.gain.value = 0.2;
+
+                lfo.connect(lfoGain);
+                lfoGain.connect(primaryGain.gain);
+
+                // Smooth fade in/out
+                primaryGain.gain.setValueAtTime(0, startTime);
+                primaryGain.gain.linearRampToValueAtTime(0.3, startTime + 3);
+                primaryGain.gain.setValueAtTime(0.3, startTime + duration - 3);
+                primaryGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+                // Connect everything
+                primaryOsc.connect(primaryGain);
+                harmonicOsc.connect(harmonicGain);
+                subOsc.connect(subGain);
+                
+                primaryGain.connect(this.masterGain);
+                harmonicGain.connect(this.masterGain);
+                subGain.connect(this.masterGain);
+
+                // Start/stop
+                lfo.start(startTime);
+                primaryOsc.start(startTime);
+                harmonicOsc.start(startTime);
+                subOsc.start(startTime);
+                
+                lfo.stop(startTime + duration);
+                primaryOsc.stop(startTime + duration);
+                harmonicOsc.stop(startTime + duration);
+                subOsc.stop(startTime + duration);
+
+                this.activeNodes.push(lfo, primaryOsc, harmonicOsc, subOsc, lfoGain, primaryGain, harmonicGain, subGain);
+            }
+
+            // Generate guided breathing sounds
+            generateBreathingGuide(duration) {
+                const startTime = this.audioContext.currentTime;
+                const breathCycle = 8; // 4 seconds in, 4 seconds out
+
+                for (let i = 0; i < duration / breathCycle; i++) {
+                    const cycleStart = startTime + (i * breathCycle);
+                    this.createBreathCycle(cycleStart);
+                }
+            }
+
+            createBreathCycle(startTime) {
+                // Soft "in" breath sound
+                const inhaleOsc = this.audioContext.createOscillator();
+                const inhaleGain = this.audioContext.createGain();
+                const inhaleFilter = this.audioContext.createBiquadFilter();
+
+                inhaleOsc.type = 'sine';
+                inhaleOsc.frequency.setValueAtTime(200, startTime);
+                inhaleOsc.frequency.linearRampToValueAtTime(300, startTime + 4);
+
+                inhaleFilter.type = 'lowpass';
+                inhaleFilter.frequency.value = 800;
+
+                inhaleGain.gain.setValueAtTime(0, startTime);
+                inhaleGain.gain.linearRampToValueAtTime(0.1, startTime + 0.5);
+                inhaleGain.gain.setValueAtTime(0.1, startTime + 3.5);
+                inhaleGain.gain.linearRampToValueAtTime(0, startTime + 4);
+
+                // Soft "out" breath sound
+                const exhaleOsc = this.audioContext.createOscillator();
+                const exhaleGain = this.audioContext.createGain();
+                const exhaleFilter = this.audioContext.createBiquadFilter();
+
+                exhaleOsc.type = 'sine';
+                exhaleOsc.frequency.setValueAtTime(300, startTime + 4);
+                exhaleOsc.frequency.linearRampToValueAtTime(150, startTime + 8);
+
+                exhaleFilter.type = 'lowpass';
+                exhaleFilter.frequency.value = 600;
+
+                exhaleGain.gain.setValueAtTime(0, startTime + 4);
+                exhaleGain.gain.linearRampToValueAtTime(0.08, startTime + 4.5);
+                exhaleGain.gain.setValueAtTime(0.08, startTime + 7.5);
+                exhaleGain.gain.linearRampToValueAtTime(0, startTime + 8);
+
+                // Connect and start
+                inhaleOsc.connect(inhaleFilter);
+                inhaleFilter.connect(inhaleGain);
+                inhaleGain.connect(this.masterGain);
+
+                exhaleOsc.connect(exhaleFilter);
+                exhaleFilter.connect(exhaleGain);
+                exhaleGain.connect(this.masterGain);
+
+                inhaleOsc.start(startTime);
+                inhaleOsc.stop(startTime + 4);
+                exhaleOsc.start(startTime + 4);
+                exhaleOsc.stop(startTime + 8);
+
+                this.activeNodes.push(inhaleOsc, exhaleOsc, inhaleGain, exhaleGain, inhaleFilter, exhaleFilter);
+            }
+
+            createWhiteNoise() {
+                const bufferSize = this.audioContext.sampleRate * 2;
+                const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                const whiteNoise = this.audioContext.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+                
+                return whiteNoise;
+            }
+        }
+
+        // Global music generator instance
+        const musicGenerator = new TherapeuticMusicGenerator();
+
+        // Enhanced play track function
+        async function playTrack(trackName, category, element) {
+            // Stop current audio if playing
+            if (musicGenerator.isPlaying) {
+                musicGenerator.stop();
+                if (currentTrack) {
+                    currentTrack.classList.remove('playing');
+                    currentTrack.querySelector('.track-playing').style.display = 'none';
+                }
+            }
+
+            // Track usage
+            try {
+                await fetch('/api/music-therapy/track', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        track_name: trackName,
+                        category: category
+                    })
+                });
+            } catch (error) {
+                console.error('Error tracking music usage:', error);
+            }
+
+            // Visual feedback
+            element.classList.add('playing');
+            element.querySelector('.track-playing').style.display = 'block';
+            currentTrack = element;
+
+            try {
+                await musicGenerator.init();
+                musicGenerator.isPlaying = true;
+
+                // Determine track type and generate appropriate audio
+                const trackType = getTrackType(trackName);
+                const duration = parseDuration(element.querySelector('.track-details span:last-child').textContent);
+
+                switch(trackType) {
+                    case 'nature':
+                        if (trackName.includes('Rain')) {
+                            musicGenerator.generateNatureSounds('rain', duration);
+                        } else if (trackName.includes('Ocean') || trackName.includes('Waves')) {
+                            musicGenerator.generateNatureSounds('ocean', duration);
+                        } else if (trackName.includes('Forest')) {
+                            musicGenerator.generateNatureSounds('forest', duration);
+                        } else if (trackName.includes('Wind') || trackName.includes('Breeze')) {
+                            musicGenerator.generateNatureSounds('wind', duration);
+                        } else {
+                            musicGenerator.generateNatureSounds('rain', duration); // Default
+                        }
+                        break;
+
+                    case 'tone':
+                        const frequency = parseFrequency(element.querySelector('.track-details span').textContent);
+                        musicGenerator.generateHealingTones(frequency, duration);
+                        break;
+
+                    case 'guided':
+                        if (trackName.includes('Breathing')) {
+                            musicGenerator.generateBreathingGuide(duration);
+                        } else {
+                            // Default to calming tone for other guided tracks
+                            musicGenerator.generateHealingTones(432, duration);
+                        }
+                        break;
+
+                    case 'instrumental':
+                    default:
+                        // Generate a pleasant harmonic progression
+                        const baseFreq = parseFrequency(element.querySelector('.track-details span').textContent);
+                        musicGenerator.generateHealingTones(baseFreq, duration);
+                        break;
+                }
+
+                // Auto-stop after duration
+                setTimeout(() => {
+                    if (currentTrack === element) {
+                        musicGenerator.stop();
+                        element.classList.remove('playing');
+                        element.querySelector('.track-playing').style.display = 'none';
+                        currentTrack = null;
+                    }
+                }, duration * 1000);
+
+            } catch (error) {
+                console.log('Advanced audio not supported, using simple fallback');
+                // Simple fallback tone
+                setTimeout(() => {
+                    if (currentTrack === element) {
+                        element.classList.remove('playing');
+                        element.querySelector('.track-playing').style.display = 'none';
+                        currentTrack = null;
+                    }
+                }, 5000);
+            }
+        }
+
+        // Helper functions
+        function getTrackType(trackName) {
+            if (trackName.includes('Rain') || trackName.includes('Ocean') || trackName.includes('Forest') || trackName.includes('Wind') || trackName.includes('Breeze')) {
+                return 'nature';
+            } else if (trackName.includes('Bell') || trackName.includes('Bowl') || trackName.includes('Tone')) {
+                return 'tone';
+            } else if (trackName.includes('Breathing') || trackName.includes('Guide') || trackName.includes('Mindfulness')) {
+                return 'guided';
+            } else {
+                return 'instrumental';
+            }
+        }
+
+        function parseFrequency(freqText) {
+            const frequencies = {
+                '432Hz': 432,
+                '528Hz': 528,
+                '639Hz': 639,
+                '741Hz': 741,
+                '396Hz': 396,
+                'Natural': 432
+            };
+            return frequencies[freqText] || 432;
+        }
+
+        function parseDuration(durationText) {
+            const match = durationText.match(/(\d+)/);
+            return match ? parseInt(match[1]) * 60 : 300; // Convert minutes to seconds, default 5 min
+        }
+
+        // Typing indicator
+        function showTyping() {
+            document.getElementById('typingIndicator').classList.add('active');
+        }
+
+        // Auto-scroll to bottom
+        function scrollToBottom() {
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            scrollToBottom();
+            
+            // Close modal when clicking outside
+            document.getElementById('musicModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeMusicModal();
+                }
+            });
+
+            // Handle enter key in chat input
+            const chatInput = document.querySelector('.chat-input input[name="message"]');
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.form.submit();
+                }
+            });
         });
 
-        // Handle Enter key in message input
-        document.querySelector('.message-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('chatForm').submit();
+        // Close settings when clicking outside
+        document.addEventListener('click', function(e) {
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsBtn = document.querySelector('.settings-btn');
+            
+            if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+                settingsPanel.classList.remove('active');
             }
         });
-
-        // Auto-resize input and focus
-        document.querySelector('.message-input').addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-        });
-
-        // Focus input on load
-        document.querySelector('.message-input').focus();
     </script>
 </body>
 </html>

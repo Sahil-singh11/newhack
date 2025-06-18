@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import secrets
 import requests
@@ -30,13 +30,75 @@ GROQ_HEADERS = {
 # VADER sentiment analyzer
 vader = SentimentIntensityAnalyzer()
 
-# Conversation model (REMOVED model_used column)
+# Music therapy data - organized by emotional state
+MUSIC_THERAPY = {
+    "anxiety": {
+        "title": "Calming & Grounding",
+        "description": "Gentle melodies to help reduce anxiety and promote relaxation",
+        "tracks": [
+            {"name": "Rain & Piano", "frequency": "432Hz", "duration": "10 min", "type": "nature"},
+            {"name": "Ocean Waves", "frequency": "528Hz", "duration": "15 min", "type": "nature"},
+            {"name": "Soft Meditation Bell", "frequency": "396Hz", "duration": "8 min", "type": "tone"},
+            {"name": "Forest Sounds", "frequency": "Natural", "duration": "20 min", "type": "nature"}
+        ]
+    },
+    "depression": {
+        "title": "Uplifting & Hopeful",
+        "description": "Gentle, mood-lifting music to help brighten your day",
+        "tracks": [
+            {"name": "Sunrise Melody", "frequency": "528Hz", "duration": "12 min", "type": "instrumental"},
+            {"name": "Birds & Gentle Guitar", "frequency": "432Hz", "duration": "15 min", "type": "nature"},
+            {"name": "Warm Piano", "frequency": "639Hz", "duration": "10 min", "type": "instrumental"},
+            {"name": "Hope Theme", "frequency": "741Hz", "duration": "8 min", "type": "tone"}
+        ]
+    },
+    "stress": {
+        "title": "Stress Relief",
+        "description": "Soothing sounds to help release tension and promote peace",
+        "tracks": [
+            {"name": "Deep Breathing Guide", "frequency": "Natural", "duration": "5 min", "type": "guided"},
+            {"name": "Tibetan Bowls", "frequency": "432Hz", "duration": "12 min", "type": "tone"},
+            {"name": "Gentle Stream", "frequency": "Natural", "duration": "18 min", "type": "nature"},
+            {"name": "Soft Harp", "frequency": "528Hz", "duration": "10 min", "type": "instrumental"}
+        ]
+    },
+    "anger": {
+        "title": "Calming & Centering",
+        "description": "Music to help process anger and find inner peace",
+        "tracks": [
+            {"name": "Cooling Rain", "frequency": "Natural", "duration": "15 min", "type": "nature"},
+            {"name": "Peaceful Flute", "frequency": "432Hz", "duration": "12 min", "type": "instrumental"},
+            {"name": "Centering Tones", "frequency": "396Hz", "duration": "8 min", "type": "tone"},
+            {"name": "Mountain Breeze", "frequency": "Natural", "duration": "20 min", "type": "nature"}
+        ]
+    },
+    "general": {
+        "title": "General Wellness",
+        "description": "Balanced music for overall emotional well-being",
+        "tracks": [
+            {"name": "Balance & Harmony", "frequency": "528Hz", "duration": "15 min", "type": "tone"},
+            {"name": "Nature Symphony", "frequency": "Natural", "duration": "25 min", "type": "nature"},
+            {"name": "Peaceful Piano", "frequency": "432Hz", "duration": "12 min", "type": "instrumental"},
+            {"name": "Mindfulness Bell", "frequency": "639Hz", "duration": "5 min", "type": "guided"}
+        ]
+    }
+}
+
+# Conversation model
 class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_name = db.Column(db.String(100))
     bot_name = db.Column(db.String(100))
     user_message = db.Column(db.Text)
     bot_response = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Music therapy usage tracking
+class MusicTherapySession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_name = db.Column(db.String(100))
+    track_name = db.Column(db.String(200))
+    category = db.Column(db.String(50))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Create the database
@@ -85,6 +147,26 @@ def get_empathy_context(user_input, sentiment_score):
         return "The user seems positive. Match their energy while staying supportive."
     else:
         return "The user is very positive. Share in their happiness while being authentic."
+
+# Detect emotional state for music recommendation
+def detect_emotional_state(user_input, sentiment_score):
+    """Detect emotional state to recommend appropriate music therapy"""
+    lower = user_input.lower()
+    
+    if any(word in lower for word in ["anxious", "anxiety", "panic", "worried", "nervous"]):
+        return "anxiety"
+    elif any(word in lower for word in ["depressed", "depression", "sad", "empty", "hopeless", "down"]):
+        return "depression"
+    elif any(word in lower for word in ["stressed", "stress", "overwhelmed", "pressure", "tension"]):
+        return "stress"
+    elif any(word in lower for word in ["angry", "furious", "mad", "frustrated", "rage"]):
+        return "anger"
+    elif sentiment_score <= -0.5:
+        return "depression"
+    elif sentiment_score <= -0.2:
+        return "stress"
+    else:
+        return "general"
 
 # Get conversation context for Ollama
 def get_conversation_context(user_name, bot_name, limit=3):
@@ -230,7 +312,55 @@ def get_ai_response(user_message, user_name, bot_name):
         response = get_groq_completion(user_message, user_name, bot_name)
         return response
 
-# Chat route (FIXED: Clear functionality now properly clears database)
+# NEW: Music therapy API endpoint
+@app.route("/api/music-therapy")
+def get_music_therapy():
+    """Get music therapy recommendations based on emotional state"""
+    emotion = request.args.get('emotion', 'general')
+    user_name = session.get('user_name', 'Friend')
+    
+    if emotion in MUSIC_THERAPY:
+        # Track usage
+        db.session.add(MusicTherapySession(
+            user_name=user_name,
+            track_name="Category Accessed",
+            category=emotion
+        ))
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "emotion": emotion,
+            "data": MUSIC_THERAPY[emotion]
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "message": "Emotion category not found"
+        }), 404
+
+# NEW: Track music therapy usage
+@app.route("/api/music-therapy/track", methods=["POST"])
+def track_music_usage():
+    """Track when a user starts a music therapy session"""
+    data = request.get_json()
+    track_name = data.get('track_name')
+    category = data.get('category')
+    user_name = session.get('user_name', 'Friend')
+    
+    if track_name and category:
+        db.session.add(MusicTherapySession(
+            user_name=user_name,
+            track_name=track_name,
+            category=category
+        ))
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Usage tracked"})
+    else:
+        return jsonify({"success": False, "message": "Missing data"}), 400
+
+# Chat route (Enhanced with music therapy suggestions)
 @app.route("/", methods=["GET", "POST"])
 def chat():
     if 'chat_history' not in session:
@@ -266,8 +396,15 @@ def chat():
                             session['user_name'], 
                             session['bot_name']
                         )
+                        
+                        # NEW: Add music therapy suggestion based on detected emotion
+                        sentiment_score = vader.polarity_scores(user_msg)['compound']
+                        detected_emotion = detect_emotional_state(user_msg, sentiment_score)
+                        
+                        if detected_emotion != 'general' and sentiment_score < 0.1:
+                            bot_response += f"\n\n🎵 I notice you might be feeling {detected_emotion.replace('_', ' ')}. Would you like me to suggest some therapeutic music that might help? Just click the music note below! 🎶"
 
-                    # Save to database (REMOVED model_used parameter)
+                    # Save to database
                     db.session.add(Conversation(
                         user_name=session['user_name'],
                         bot_name=session['bot_name'],
@@ -277,7 +414,7 @@ def chat():
                     db.session.commit()
 
             elif action == "clear":
-                # FIXED: Clear both session and database records
+                # Clear both session and database records
                 session['chat_history'] = []
                 session.modified = True
                 
@@ -317,14 +454,16 @@ def status():
         "ollama_available": ollama_status,
         "empathy_model": EMPATHY_MODEL,
         "fallback": "Groq API" if not ollama_status else "Not needed",
+        "music_therapy_categories": list(MUSIC_THERAPY.keys()),
         "timestamp": datetime.utcnow().isoformat()
     }
 
 # Run the app
 if __name__ == "__main__":
-    print("Starting Enhanced AI Empathy Web App")
+    print("Starting Enhanced AI Empathy Web App with Music Therapy")
     print("Ollama Empathy Model: Primary")
     print("Groq API: Fallback")
+    print("Music Therapy: Integrated")
     print("Access at: http://localhost:5000")
     print("Status check: http://localhost:5000/status")
     
