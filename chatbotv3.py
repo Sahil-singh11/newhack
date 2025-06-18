@@ -1,9 +1,12 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, session, redirect, url_for
+import secrets
 import requests
 import json
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # Add secret key for sessions
 
 # Groq API credentials
 API_TOKEN = "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"
@@ -79,6 +82,8 @@ def get_completion(prompt):
         return f"Request failed: {e}"
     except json.JSONDecodeError as e:
         return f"JSON decode error: {e}"
+    except Exception as e:
+        return f"Unexpected error: {e}"
 
 # HTML template
 HTML_TEMPLATE = '''
@@ -402,7 +407,7 @@ HTML_TEMPLATE = '''
             <button class="settings-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
             <h1>
                 <div class="bot-avatar">🤖</div>
-                <span id="bot-name">Alex</span>
+                <span id="bot-name">{{ bot_name or 'Alex' }}</span>
             </h1>
             <div class="chat-subtitle">Your AI Friend</div>
         </div>
@@ -411,12 +416,12 @@ HTML_TEMPLATE = '''
             <form method="post" id="settingsForm">
                 <input type="hidden" name="action" value="set_names">
                 <div class="form-group">
-                    <label for="bot_name">AI Friend's Name:</label>
-                    <input type="text" id="bot_name" name="bot_name" placeholder="Enter AI name..." value="Alex">
+                    <label for="bot_name_input">AI Friend's Name:</label>
+                    <input type="text" id="bot_name_input" name="bot_name" placeholder="Enter AI name..." value="{{ bot_name or 'Alex' }}">
                 </div>
                 <div class="form-group">
-                    <label for="user_name">Your Name:</label>
-                    <input type="text" id="user_name" name="user_name" placeholder="Enter your name..." value="Friend">
+                    <label for="user_name_input">Your Name:</label>
+                    <input type="text" id="user_name_input" name="user_name" placeholder="Enter your name..." value="{{ user_name or 'Friend' }}">
                 </div>
                 <button type="submit" class="btn">Save Names</button>
                 <button type="button" class="btn btn-secondary" onclick="toggleSettings()">Cancel</button>
@@ -424,19 +429,21 @@ HTML_TEMPLATE = '''
         </div>
         
         <div class="chat-messages" id="chatMessages">
-            <!-- Initial welcome message -->
+            <!-- Initial welcome message (only show if no chat history) -->
+            {% if not chat %}
             <div class="message bot welcome-message">
-                <div class="message-sender">🤖 Alex</div>
+                <div class="message-sender">🤖 {{ bot_name or 'Alex' }}</div>
                 <div class="message-content">
-                    Hi Friend! I'm Alex, your AI companion. I'm here to chat, help, and support you. What's on your mind today? 😊
+                    Hi {{ user_name or 'Friend' }}! I'm {{ bot_name or 'Alex' }}, your AI companion. I'm here to chat, help, and support you. What's on your mind today? 😊
                 </div>
             </div>
+            {% endif %}
             
             <!-- Chat messages will appear here -->
             {% for msg in chat %}
                 {% if msg.user %}
                     <div class="message user">
-                        <div class="message-sender">You</div>
+                        <div class="message-sender">{{ user_name or 'You' }}</div>
                         <div class="message-content">{{ msg.user }}</div>
                     </div>
                 {% endif %}
@@ -448,7 +455,7 @@ HTML_TEMPLATE = '''
         </div>
         
         <div class="typing-indicator" id="typingIndicator">
-            🤖 <span id="bot-name-typing">Alex</span> is typing...
+            🤖 <span id="bot-name-typing">{{ bot_name or 'Alex' }}</span> is typing...
         </div>
         
         <div class="chat-input">
@@ -460,21 +467,25 @@ HTML_TEMPLATE = '''
                 </div>
             </form>
             <div style="margin-top: 10px; text-align: center;">
-                <form method="post" style="display: inline;">
+                <form method="post" style="display: inline;" onsubmit="return confirmClear()">
                     <input type="hidden" name="action" value="clear">
-                    <button type="submit" class="btn clear-btn" onclick="return confirm('Clear all messages?')">🗑️ Clear Chat</button>
+                    <button type="submit" class="btn clear-btn">🗑️ Clear Chat</button>
                 </form>
             </div>
         </div>
     </div>
 
     <script>
-        let botName = 'Alex';
-        let userName = 'Friend';
+        let botName = '{{ bot_name or "Alex" }}';
+        let userName = '{{ user_name or "Friend" }}';
 
         function toggleSettings() {
             const panel = document.getElementById('settingsPanel');
             panel.classList.toggle('active');
+        }
+
+        function confirmClear() {
+            return confirm('Are you sure you want to clear all messages? This cannot be undone.');
         }
 
         function updateBotName(name) {
@@ -509,6 +520,9 @@ HTML_TEMPLATE = '''
                 if (response.ok) {
                     location.reload();
                 }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save settings');
             });
         });
 
@@ -535,12 +549,6 @@ HTML_TEMPLATE = '''
         window.addEventListener('load', function() {
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Set initial bot name if available
-            const currentBotName = document.getElementById('bot-name').textContent;
-            if (currentBotName && currentBotName !== 'Alex') {
-                updateBotName(currentBotName);
-            }
         });
 
         // Handle Enter key in message input
@@ -564,30 +572,69 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# Store chat history
-chat_history = []
-
 @app.route("/", methods=["GET", "POST"])
 def chat():
-    global chat_history
+    # Initialize session data with proper defaults
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    if 'bot_name' not in session:
+        session['bot_name'] = 'Alex'
+    if 'user_name' not in session:
+        session['user_name'] = 'Friend'
+
     if request.method == "POST":
-        user_msg = request.form["message"]
+        action = request.form.get("action", "chat")
+        
+        try:
+            if action == "set_names":
+                session['bot_name'] = request.form.get("bot_name", "Alex").strip() or "Alex"
+                session['user_name'] = request.form.get("user_name", "Friend").strip() or "Friend"
+                session.modified = True
+                return redirect(url_for('chat'))
+                
+            elif action == "chat":
+                user_msg = request.form.get("message", "").strip()
+                if user_msg:
+                    if contains_suicidal_language(user_msg):
+                        bot_response = (
+                            f"Hey {session['user_name']}, I'm really sorry you're feeling this way. You're not alone — "
+                            "please consider talking to someone who can help.\n\n"
+                            "**📞 Suicide Prevention Helpline:**\n"
+                            "**Mauritius:** 800 93 93 (free, 24/7)\n"
+                            "**International:** https://findahelpline.com/\n\n"
+                            "There are people who care and want to support you. I care too. 💙"
+                        )
+                    else:
+                        prompt = f"You are {session['bot_name']}, a friendly AI companion. {get_tone_instruction(user_msg)}\nUser ({session['user_name']}): {user_msg}"
+                        bot_response = get_completion(prompt)
 
-        if contains_suicidal_language(user_msg):
-            bot_response = (
-                "I'm really sorry you're feeling this way. You're not alone — "
-                "please consider talking to someone who can help.\n\n"
-                "**📞 Suicide Prevention Helpline:**\n"
-                "**Mauritius:** 800 93 93 (free, 24/7)\n"
-                "**International:** https://findahelpline.com/\n\n"
-                "There are people who care and want to support you."
-            )
-        else:
-            prompt = build_prompt(user_msg)
-            bot_response = get_completion(prompt)
+                    # Ensure chat_history is a list
+                    if not isinstance(session.get('chat_history'), list):
+                        session['chat_history'] = []
+                    
+                    session['chat_history'].append({"user": user_msg, "bot": bot_response})
+                    session.modified = True
+            
+            elif action == "clear":
+                session['chat_history'] = []
+                session.modified = True
+                return redirect(url_for('chat'))
+                
+        except Exception as e:
+            print(f"Error in POST request: {e}")
+            # Reset session data if there's an error
+            session['chat_history'] = []
+            session.modified = True
 
-        chat_history.append({"user": user_msg, "bot": bot_response})
-    return render_template_string(HTML_TEMPLATE, chat=chat_history)
+    # Ensure we always have valid session data before rendering
+    chat_history = session.get('chat_history', [])
+    bot_name = session.get('bot_name', 'Alex')
+    user_name = session.get('user_name', 'Friend')
+    
+    return render_template_string(HTML_TEMPLATE, 
+                                chat=chat_history, 
+                                bot_name=bot_name,
+                                user_name=user_name)
 
 if __name__ == "__main__":
     app.run(debug=True)
