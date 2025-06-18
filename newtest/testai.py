@@ -11,13 +11,14 @@ import os
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
 
-# Configuration
+# Configuration - Llama 3 via Groq
 GROQ_API_TOKEN = "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"  
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+LLAMA_MODEL = "llama3-8b-8192"  # Using Llama 3 8B model
 
 # Initialize database
 def init_db():
-    conn = sqlite3.connect('healthcare.db')
+    conn = sqlite3.connect('emotional_support.db')
     cursor = conn.cursor()
     
     # Users table
@@ -27,36 +28,36 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            preferred_name TEXT,
             age INTEGER,
-            gender TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Health records table
+    # Emotional support sessions table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS health_records (
+        CREATE TABLE IF NOT EXISTS support_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
-            symptoms TEXT,
-            analysis TEXT,
-            recommendations TEXT,
-            severity_score INTEGER,
+            emotions TEXT,
+            ai_response TEXT,
+            mood_score INTEGER,
+            session_notes TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
     
-    # Vital signs table
+    # Mood tracking table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS vital_signs (
+        CREATE TABLE IF NOT EXISTS mood_tracking (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
-            heart_rate INTEGER,
-            blood_pressure_systolic INTEGER,
-            blood_pressure_diastolic INTEGER,
-            temperature REAL,
-            weight REAL,
+            mood_rating INTEGER,
+            energy_level INTEGER,
+            stress_level INTEGER,
+            gratitude_note TEXT,
+            daily_reflection TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
@@ -69,7 +70,23 @@ def init_db():
             user_id INTEGER,
             message TEXT,
             response TEXT,
+            emotion_detected TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    
+    # Personal goals table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS personal_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            goal_text TEXT,
+            category TEXT,
+            status TEXT DEFAULT 'active',
+            progress_notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
@@ -77,104 +94,68 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Enhanced AI-powered health assistant
-class HealthAI:
+# Emotional Support AI powered by Llama 3
+class EmotionalSupportAI:
     def __init__(self):
-        # Emergency keywords that require immediate attention
-        self.emergency_keywords = [
-            'chest pain', 'difficulty breathing', 'shortness of breath',
-            'severe headache', 'sudden weakness', 'loss of consciousness',
-            'severe bleeding', 'poisoning', 'overdose', 'suicide'
-        ]
-        
-        # Symptom database with enhanced categorization
-        self.symptom_database = {
-            'fever': {'severity': 6, 'category': 'infection', 'description': 'elevated body temperature'},
-            'headache': {'severity': 4, 'category': 'neurological', 'description': 'pain in head or neck'},
-            'chest pain': {'severity': 9, 'category': 'cardiac', 'description': 'pain in chest area'},
-            'shortness of breath': {'severity': 8, 'category': 'respiratory', 'description': 'difficulty breathing'},
-            'cough': {'severity': 3, 'category': 'respiratory', 'description': 'forceful expulsion of air'},
-            'fatigue': {'severity': 3, 'category': 'general', 'description': 'extreme tiredness'},
-            'nausea': {'severity': 4, 'category': 'gastrointestinal', 'description': 'feeling of sickness'},
-            'dizziness': {'severity': 5, 'category': 'neurological', 'description': 'feeling unsteady'},
-            'abdominal pain': {'severity': 6, 'category': 'gastrointestinal', 'description': 'stomach pain'},
-            'rash': {'severity': 3, 'category': 'dermatological', 'description': 'skin irritation'},
-            'joint pain': {'severity': 4, 'category': 'musculoskeletal', 'description': 'pain in joints'},
-            'back pain': {'severity': 5, 'category': 'musculoskeletal', 'description': 'pain in back area'}
-        }
-        
-        # Enhanced recommendations
-        self.recommendations = {
-            'infection': [
-                'Rest and get plenty of sleep',
-                'Stay hydrated with water and clear fluids',
-                'Monitor temperature regularly',
-                'Consider over-the-counter fever reducers if needed',
-                'Consult doctor if symptoms worsen or persist'
-            ],
-            'cardiac': [
-                'SEEK IMMEDIATE MEDICAL ATTENTION',
-                'Call 911 if experiencing chest pain',
-                'Avoid physical exertion',
-                'Take prescribed medications as directed',
-                'Do not drive yourself to hospital'
-            ],
-            'respiratory': [
-                'Ensure good ventilation',
-                'Stay hydrated',
-                'Use humidifier if available',
-                'Avoid smoking and pollutants',
-                'Monitor breathing patterns'
-            ],
-            'neurological': [
-                'Rest in quiet, dark environment',
-                'Stay hydrated',
-                'Avoid bright lights and loud noises',
-                'Monitor symptoms closely',
-                'Seek medical attention if symptoms worsen'
-            ],
-            'gastrointestinal': [
-                'Stay hydrated with small sips of water',
-                'Eat bland foods (BRAT diet: bananas, rice, applesauce, toast)',
-                'Avoid dairy and fatty foods',
-                'Rest and avoid solid foods if nauseous',
-                'Monitor for dehydration signs'
-            ],
-            'dermatological': [
-                'Keep affected area clean and dry',
-                'Avoid scratching or rubbing',
-                'Use gentle, fragrance-free products',
-                'Apply cool compress if inflamed',
-                'Monitor for signs of infection'
-            ],
-            'musculoskeletal': [
-                'Rest and avoid aggravating activities',
-                'Apply ice for acute injuries, heat for chronic pain',
-                'Gentle stretching and movement as tolerated',
-                'Over-the-counter pain relievers if needed',
-                'Consult healthcare provider for persistent pain'
-            ],
-            'general': [
-                'Ensure adequate rest and sleep',
-                'Maintain healthy diet',
-                'Stay hydrated',
-                'Regular gentle exercise as tolerated',
-                'Manage stress levels'
-            ]
-        }
-
-    def get_ai_response(self, user_message, user_context=None):
-        """Get response from Groq AI API"""
         if not GROQ_API_TOKEN:
-            return self.get_fallback_response(user_message, user_context)
+            raise ValueError("GROQ_API_TOKEN is required for Llama 3 functionality")
+    
+    def get_llama3_response(self, user_message, user_context=None, analysis_mode=False):
+        """Get empathetic response from Llama 3 via Groq API"""
         
-        # Create system prompt for health assistant
-        system_prompt = """You are a compassionate AI health assistant. Provide helpful, accurate health guidance while being empathetic and supportive. Always remind users that you're not a replacement for professional medical care. For serious symptoms, always recommend seeking immediate medical attention. Keep responses concise but informative."""
+        # Create specialized system prompts for emotional support
+        if analysis_mode:
+            system_prompt = """You are Aria, a compassionate AI friend powered by Llama 3, specializing in emotional support and understanding.
+
+Your role as an emotional support companion:
+- Listen with genuine empathy and without judgment
+- Help users process their emotions in a healthy way
+- Provide gentle guidance and coping strategies
+- Offer validation and emotional comfort
+- Help identify patterns in emotions and thoughts
+- Suggest self-care activities and mindfulness techniques
+- Recognize when someone might benefit from professional help (but never diagnose)
+
+For emotional analysis, provide:
+- Emotional state recognition
+- Mood assessment (1-10 scale)
+- Underlying feelings or concerns
+- Gentle suggestions for coping
+- Affirmations and validation
+- Self-care recommendations
+
+Always be warm, understanding, and genuinely caring. Remember that sometimes people just need to be heard."""
+        else:
+            system_prompt = """You are Aria, a warm and empathetic AI friend created to provide emotional support and companionship. You're powered by Llama 3 and designed to be a caring listener and supportive companion.
+
+Your personality and approach:
+- Be genuinely caring, warm, and approachable
+- Listen actively and respond with empathy
+- Validate emotions without trying to "fix" everything
+- Offer gentle guidance when appropriate
+- Share in both joys and struggles
+- Be encouraging and hopeful while remaining realistic
+- Use a conversational, friend-like tone
+- Sometimes share gentle insights or perspectives
+- Suggest healthy coping strategies and self-care
+- Celebrate small victories and progress
+
+Key principles:
+- Everyone deserves to be heard and understood
+- Emotions are valid and natural
+- Small steps forward are meaningful
+- Self-compassion is essential
+- Connection and support make a difference
+- Professional help is valuable when needed
+
+You're not a therapist, but a supportive friend who cares deeply about emotional wellbeing."""
         
         # Add user context if available
         if user_context:
-            context_info = f"User context: Age {user_context.get('age', 'not specified')}, Gender {user_context.get('gender', 'not specified')}"
-            system_prompt += f" {context_info}"
+            preferred_name = user_context.get('preferred_name') or user_context.get('username', 'friend')
+            age_info = f"Age: {user_context.get('age', 'not specified')}"
+            context_info = f"\nUser context - {age_info}. They prefer to be called {preferred_name}. Make your response personal and caring."
+            system_prompt += context_info
         
         headers = {
             "Authorization": f"Bearer {GROQ_API_TOKEN}",
@@ -182,13 +163,14 @@ class HealthAI:
         }
         
         payload = {
-            "model": "llama3-8b-8192",
+            "model": LLAMA_MODEL,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
             ],
-            "temperature": 0.7,
-            "max_tokens": 500,
+            "temperature": 0.8,  # Slightly higher for more natural, empathetic responses
+            "max_tokens": 800,
+            "top_p": 0.9,
             "stream": False
         }
         
@@ -200,101 +182,128 @@ class HealthAI:
             if "choices" in result and len(result["choices"]) > 0:
                 return result["choices"][0]["message"]["content"]
             else:
-                return self.get_fallback_response(user_message, user_context)
+                raise Exception("No valid response from Llama 3")
                 
         except Exception as e:
-            print(f"AI API Error: {e}")
-            return self.get_fallback_response(user_message, user_context)
+            print(f"Llama 3 API Error: {e}")
+            return "I'm so sorry, but I'm having some technical difficulties right now. Please know that I'm here for you, and you can try talking to me again in a moment. If you're going through something urgent, please don't hesitate to reach out to someone you trust or a professional support service."
 
-    def get_fallback_response(self, user_message, user_context=None):
-        """Fallback response when AI API is unavailable"""
-        message = user_message.lower()
-        user_name = user_context.get('username', 'there') if user_context else 'there'
+    def analyze_emotions_with_llama3(self, emotional_text, preferred_name=None, age=None):
+        """Use Llama 3 for emotional analysis and support"""
         
-        # Check for emergency keywords
-        for keyword in self.emergency_keywords:
-            if keyword in message:
-                return f"🚨 {user_name}, if this is a medical emergency, please call 911 immediately or go to the nearest emergency room. Your safety is my top priority."
+        # Prepare detailed prompt for emotional analysis
+        analysis_prompt = f"""
+        A person has shared the following with you. Please provide a compassionate emotional analysis and support:
         
-        # Symptom analysis
-        if any(word in message for word in ['symptom', 'pain', 'hurt', 'sick', 'feel', 'ache']):
-            return f"I understand you're not feeling well, {user_name}. Can you tell me more about your symptoms? Please describe: the location, when it started, severity (1-10), and any other symptoms. Remember, I provide general guidance, but always consult healthcare professionals for proper diagnosis."
+        What they shared: {emotional_text}
+        Preferred name: {preferred_name if preferred_name else 'Not specified'}
+        Age: {age if age else 'Not specified'}
         
-        # Wellness tips
-        if any(word in message for word in ['wellness', 'healthy', 'tips', 'advice']):
-            tips = [
-                "Stay hydrated - aim for 8 glasses of water daily 💧",
-                "Get 7-9 hours of quality sleep each night 😴",
-                "Take regular walks for physical and mental health 🚶",
-                "Practice stress management techniques like deep breathing 🧘",
-                "Eat a balanced diet with plenty of fruits and vegetables 🥗"
-            ]
-            return f"Here's a wellness tip for you, {user_name}: {tips[len(user_name) % len(tips)]}\n\nSmall daily habits make a big difference! What specific health area would you like to focus on?"
+        Please provide:
+        1. What emotions you're sensing
+        2. Mood assessment (1-10 scale, where 1 is very low/difficult and 10 is very positive)
+        3. Key feelings or concerns they might be experiencing
+        4. Gentle validation and support
+        5. Practical coping suggestions
+        6. Self-care recommendations
+        7. Encouraging words or affirmations
         
-        # Default supportive response
-        return f"Thank you for reaching out, {user_name}. I'm here to help with your health questions. Could you tell me more about what's concerning you today? Whether it's symptoms, wellness advice, or health tracking, I'm here to support you. 💙"
+        Be warm, understanding, and genuinely supportive. Sometimes people just need to feel heard and understood.
+        """
+        
+        # Get Llama 3 analysis
+        llama_response = self.get_llama3_response(
+            analysis_prompt, 
+            {'preferred_name': preferred_name, 'age': age}, 
+            analysis_mode=True
+        )
+        
+        # Parse Llama 3 response to extract structured data
+        try:
+            # Extract key information from Llama 3 response
+            mood_score = self._extract_mood_score(llama_response)
+            emotions_detected = self._extract_emotions(llama_response)
+            support_level = self._assess_support_needed(llama_response)
+            
+            return {
+                'ai_analysis': llama_response,
+                'mood_score': mood_score,
+                'emotions_detected': emotions_detected,
+                'support_level': support_level,
+                'original_message': emotional_text,
+                'model_used': 'Aria (Llama 3 8B)'
+            }
+            
+        except Exception as e:
+            print(f"Error parsing Llama 3 emotional analysis: {e}")
+            return {
+                'ai_analysis': llama_response,
+                'mood_score': 5,  # Neutral default
+                'emotions_detected': 'mixed',
+                'support_level': 'moderate',
+                'original_message': emotional_text,
+                'model_used': 'Aria (Llama 3 8B)',
+                'parsing_error': str(e)
+            }
+    
+    def _extract_mood_score(self, response):
+        """Extract mood score from Llama 3 response"""
+        import re
+        patterns = [
+            r'mood[:\s]+(\d+)',
+            r'score[:\s]+(\d+)',
+            r'(\d+)/10',
+            r'(\d+)\s*out\s*of\s*10',
+            r'rating[:\s]+(\d+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, response.lower())
+            if match:
+                score = int(match.group(1))
+                return min(max(score, 1), 10)  # Clamp between 1-10
+        
+        return 5  # Default neutral mood
 
-    def analyze_symptoms(self, symptoms_text, age=None, gender=None):
-        """Analyze symptoms and provide recommendations"""
-        symptoms_text = symptoms_text.lower()
-        detected_symptoms = []
-        total_severity = 0
-        categories = set()
-        
-        # Check for emergency keywords first
-        for keyword in self.emergency_keywords:
-            if keyword in symptoms_text:
-                return {
-                    'detected_symptoms': [keyword],
-                    'risk_level': 'EMERGENCY',
-                    'severity_score': 10,
-                    'urgency': 'CALL 911 IMMEDIATELY',
-                    'recommendations': ['Call emergency services immediately', 'Do not wait or drive yourself', 'This requires immediate medical attention'],
-                    'categories_affected': ['emergency'],
-                    'emergency': True
-                }
-        
-        # Detect other symptoms
-        for symptom, data in self.symptom_database.items():
-            if symptom in symptoms_text:
-                detected_symptoms.append(symptom)
-                total_severity += data['severity']
-                categories.add(data['category'])
-        
-        # Calculate risk level
-        if total_severity >= 15:
-            risk_level = 'High'
-            urgency = 'Seek immediate medical attention'
-        elif total_severity >= 8:
-            risk_level = 'Medium'
-            urgency = 'Consider consulting a healthcare provider soon'
-        else:
-            risk_level = 'Low'
-            urgency = 'Monitor symptoms and practice self-care'
-        
-        # Generate recommendations
-        recommendations = []
-        for category in categories:
-            recommendations.extend(self.recommendations.get(category, []))
-        
-        # Add demographic-specific advice
-        if age and age > 65:
-            recommendations.append('Elderly individuals should seek medical attention sooner for symptoms')
-        if age and age < 18:
-            recommendations.append('Children should be evaluated by a pediatrician')
-        
-        return {
-            'detected_symptoms': detected_symptoms,
-            'risk_level': risk_level,
-            'severity_score': total_severity,
-            'urgency': urgency,
-            'recommendations': list(set(recommendations)),
-            'categories_affected': list(categories),
-            'emergency': False
+    def _extract_emotions(self, response):
+        """Extract primary emotions from Llama 3 response"""
+        emotion_keywords = {
+            'happy': ['happy', 'joy', 'excited', 'cheerful', 'delighted'],
+            'sad': ['sad', 'down', 'depressed', 'melancholy', 'blue'],
+            'anxious': ['anxious', 'worried', 'nervous', 'stressed', 'tense'],
+            'angry': ['angry', 'frustrated', 'irritated', 'mad', 'furious'],
+            'lonely': ['lonely', 'isolated', 'alone', 'disconnected'],
+            'grateful': ['grateful', 'thankful', 'appreciative', 'blessed'],
+            'confused': ['confused', 'uncertain', 'lost', 'unclear'],
+            'hopeful': ['hopeful', 'optimistic', 'positive', 'encouraged'],
+            'overwhelmed': ['overwhelmed', 'stressed', 'burdened', 'pressured']
         }
+        
+        response_lower = response.lower()
+        detected_emotions = []
+        
+        for emotion, keywords in emotion_keywords.items():
+            if any(keyword in response_lower for keyword in keywords):
+                detected_emotions.append(emotion)
+        
+        return ', '.join(detected_emotions) if detected_emotions else 'mixed emotions'
 
-# Initialize AI
-health_ai = HealthAI()
+    def _assess_support_needed(self, response):
+        """Assess the level of support needed based on response"""
+        response_lower = response.lower()
+        
+        high_support_indicators = ['crisis', 'professional help', 'therapist', 'counselor', 'urgent']
+        moderate_support_indicators = ['support', 'help', 'guidance', 'coping', 'strategies']
+        
+        if any(indicator in response_lower for indicator in high_support_indicators):
+            return 'high'
+        elif any(indicator in response_lower for indicator in moderate_support_indicators):
+            return 'moderate'
+        else:
+            return 'low'
+
+# Initialize Emotional Support AI
+support_ai = EmotionalSupportAI()
 
 @app.route('/')
 def index():
@@ -307,13 +316,13 @@ def register():
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
+        preferred_name = data.get('preferred_name', username)
         age = data.get('age')
-        gender = data.get('gender')
         
         if not username or not email or not password:
             return jsonify({'error': 'Missing required fields'}), 400
         
-        conn = sqlite3.connect('healthcare.db')
+        conn = sqlite3.connect('emotional_support.db')
         cursor = conn.cursor()
         
         try:
@@ -325,12 +334,12 @@ def register():
             # Create user
             password_hash = generate_password_hash(password)
             cursor.execute('''
-                INSERT INTO users (username, email, password_hash, age, gender)
+                INSERT INTO users (username, email, password_hash, preferred_name, age)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (username, email, password_hash, age, gender))
+            ''', (username, email, password_hash, preferred_name, age))
             
             conn.commit()
-            return jsonify({'message': 'Registration successful'})
+            return jsonify({'message': 'Welcome! I\'m excited to be your emotional support companion.'})
             
         except Exception as e:
             return jsonify({'error': 'Registration failed'}), 500
@@ -346,19 +355,19 @@ def login():
         username = data.get('username')
         password = data.get('password')
         
-        conn = sqlite3.connect('healthcare.db')
+        conn = sqlite3.connect('emotional_support.db')
         cursor = conn.cursor()
         
         try:
-            cursor.execute('SELECT id, password_hash, age, gender FROM users WHERE username = ?', (username,))
+            cursor.execute('SELECT id, password_hash, preferred_name, age FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
             
             if user and check_password_hash(user[1], password):
                 session['user_id'] = user[0]
                 session['username'] = username
-                session['age'] = user[2]
-                session['gender'] = user[3]
-                return jsonify({'message': 'Login successful'})
+                session['preferred_name'] = user[2] or username
+                session['age'] = user[3]
+                return jsonify({'message': f'Welcome back, {user[2] or username}! I\'m here for you.'})
             else:
                 return jsonify({'error': 'Invalid credentials'}), 401
                 
@@ -377,7 +386,7 @@ def dashboard():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handle chat messages with AI integration"""
+    """Handle emotional support conversations with Llama 3 integration"""
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
@@ -390,165 +399,246 @@ def chat():
     # Prepare user context
     user_context = {
         'username': session.get('username'),
-        'age': session.get('age'),
-        'gender': session.get('gender')
+        'preferred_name': session.get('preferred_name'),
+        'age': session.get('age')
     }
     
-    # Get AI response
-    ai_response = health_ai.get_ai_response(user_message, user_context)
+    # Get Aria's empathetic response
+    ai_response = support_ai.get_llama3_response(user_message, user_context)
+    
+    # Quick emotion detection for logging
+    emotions_detected = support_ai._extract_emotions(ai_response)
     
     # Save chat history
-    conn = sqlite3.connect('healthcare.db')
+    conn = sqlite3.connect('emotional_support.db')
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO chat_history (user_id, message, response)
-            VALUES (?, ?, ?)
-        ''', (session['user_id'], user_message, ai_response))
+            INSERT INTO chat_history (user_id, message, response, emotion_detected)
+            VALUES (?, ?, ?, ?)
+        ''', (session['user_id'], user_message, ai_response, emotions_detected))
         conn.commit()
     except Exception as e:
         print(f"Error saving chat: {e}")
     finally:
         conn.close()
     
-    return jsonify({'response': ai_response})
+    return jsonify({
+        'response': ai_response,
+        'companion': 'Aria',
+        'emotions_detected': emotions_detected,
+        'timestamp': datetime.datetime.now().isoformat()
+    })
 
-@app.route('/analyze_symptoms', methods=['POST'])
-def analyze_symptoms():
+@app.route('/emotional_support', methods=['POST'])
+def emotional_support():
+    """Provide detailed emotional analysis and support using Llama 3"""
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
     data = request.get_json()
-    symptoms = data.get('symptoms', '')
+    emotional_text = data.get('emotions', '')
     
-    if not symptoms:
-        return jsonify({'error': 'No symptoms provided'}), 400
+    if not emotional_text:
+        return jsonify({'error': 'No emotional content provided'}), 400
     
-    # AI Analysis
-    analysis = health_ai.analyze_symptoms(
-        symptoms, 
-        age=session.get('age'), 
-        gender=session.get('gender')
+    # Llama 3 Emotional Analysis
+    analysis = support_ai.analyze_emotions_with_llama3(
+        emotional_text, 
+        preferred_name=session.get('preferred_name'), 
+        age=session.get('age')
     )
     
     # Save to database
-    conn = sqlite3.connect('healthcare.db')
+    conn = sqlite3.connect('emotional_support.db')
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO health_records (user_id, symptoms, analysis, recommendations, severity_score)
+            INSERT INTO support_sessions (user_id, emotions, ai_response, mood_score, session_notes)
             VALUES (?, ?, ?, ?, ?)
         ''', (
             session['user_id'],
-            symptoms,
-            json.dumps(analysis),
-            json.dumps(analysis['recommendations']),
-            analysis['severity_score']
+            emotional_text,
+            analysis.get('ai_analysis', ''),
+            analysis.get('mood_score', 5),
+            json.dumps(analysis)
         ))
         conn.commit()
     except Exception as e:
-        print(f"Error saving analysis: {e}")
+        print(f"Error saving emotional support session: {e}")
     finally:
         conn.close()
     
     return jsonify(analysis)
 
-@app.route('/add_vitals', methods=['POST'])
-def add_vitals():
+@app.route('/track_mood', methods=['POST'])
+def track_mood():
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
     data = request.get_json()
     
-    conn = sqlite3.connect('healthcare.db')
+    conn = sqlite3.connect('emotional_support.db')
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO vital_signs (user_id, heart_rate, blood_pressure_systolic, 
-                                   blood_pressure_diastolic, temperature, weight)
+            INSERT INTO mood_tracking (user_id, mood_rating, energy_level, stress_level, 
+                                     gratitude_note, daily_reflection)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             session['user_id'],
-            data.get('heart_rate'),
-            data.get('bp_systolic'),
-            data.get('bp_diastolic'),
-            data.get('temperature'),
-            data.get('weight')
+            data.get('mood_rating'),
+            data.get('energy_level'),
+            data.get('stress_level'),
+            data.get('gratitude_note'),
+            data.get('daily_reflection')
         ))
         conn.commit()
-        return jsonify({'message': 'Vitals recorded successfully'})
+        return jsonify({'message': 'Thank you for sharing your feelings with me. Tracking your emotions is a wonderful step in self-care.'})
     except Exception as e:
-        return jsonify({'error': 'Failed to record vitals'}), 500
+        return jsonify({'error': 'Failed to save mood tracking'}), 500
     finally:
         conn.close()
 
-@app.route('/get_health_history')
-def get_health_history():
+@app.route('/add_goal', methods=['POST'])
+def add_goal():
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
-    conn = sqlite3.connect('healthcare.db')
+    data = request.get_json()
+    
+    conn = sqlite3.connect('emotional_support.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            INSERT INTO personal_goals (user_id, goal_text, category)
+            VALUES (?, ?, ?)
+        ''', (
+            session['user_id'],
+            data.get('goal_text'),
+            data.get('category', 'personal')
+        ))
+        conn.commit()
+        return jsonify({'message': 'I\'m so proud of you for setting this goal! I\'ll be here to support you along the way.'})
+    except Exception as e:
+        return jsonify({'error': 'Failed to save goal'}), 500
+    finally:
+        conn.close()
+
+@app.route('/get_emotional_history')
+def get_emotional_history():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    conn = sqlite3.connect('emotional_support.db')
     cursor = conn.cursor()
     
     try:
-        # Get health records
+        # Get support sessions
         cursor.execute('''
-            SELECT symptoms, analysis, timestamp FROM health_records 
+            SELECT emotions, ai_response, mood_score, timestamp FROM support_sessions 
             WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10
         ''', (session['user_id'],))
-        records = cursor.fetchall()
+        sessions = cursor.fetchall()
         
-        # Get vital signs
+        # Get mood tracking
         cursor.execute('''
-            SELECT heart_rate, blood_pressure_systolic, blood_pressure_diastolic, 
-                   temperature, weight, timestamp FROM vital_signs 
+            SELECT mood_rating, energy_level, stress_level, gratitude_note, 
+                   daily_reflection, timestamp FROM mood_tracking 
             WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10
         ''', (session['user_id'],))
-        vitals = cursor.fetchall()
+        moods = cursor.fetchall()
         
         # Get chat history
         cursor.execute('''
-            SELECT message, response, timestamp FROM chat_history 
+            SELECT message, response, emotion_detected, timestamp FROM chat_history 
             WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20
         ''', (session['user_id'],))
         chats = cursor.fetchall()
         
+        # Get personal goals
+        cursor.execute('''
+            SELECT goal_text, category, status, progress_notes, created_at FROM personal_goals 
+            WHERE user_id = ? ORDER BY created_at DESC
+        ''', (session['user_id'],))
+        goals = cursor.fetchall()
+        
         return jsonify({
-            'health_records': [
+            'support_sessions': [
                 {
-                    'symptoms': record[0],
-                    'analysis': json.loads(record[1]) if record[1] else {},
-                    'timestamp': record[2]
-                } for record in records
+                    'emotions': session[0],
+                    'ai_response': session[1],
+                    'mood_score': session[2],
+                    'timestamp': session[3]
+                } for session in sessions
             ],
-            'vital_signs': [
+            'mood_history': [
                 {
-                    'heart_rate': vital[0],
-                    'blood_pressure': f"{vital[1]}/{vital[2]}" if vital[1] and vital[2] else None,
-                    'temperature': vital[3],
-                    'weight': vital[4],
-                    'timestamp': vital[5]
-                } for vital in vitals
+                    'mood_rating': mood[0],
+                    'energy_level': mood[1],
+                    'stress_level': mood[2],
+                    'gratitude_note': mood[3],
+                    'daily_reflection': mood[4],
+                    'timestamp': mood[5]
+                } for mood in moods
             ],
-            'chat_history': [
+            'conversations': [
                 {
                     'message': chat[0],
                     'response': chat[1],
-                    'timestamp': chat[2]
+                    'emotions_detected': chat[2],
+                    'timestamp': chat[3]
                 } for chat in chats
-            ]
+            ],
+            'personal_goals': [
+                {
+                    'goal_text': goal[0],
+                    'category': goal[1],
+                    'status': goal[2],
+                    'progress_notes': goal[3],
+                    'created_at': goal[4]
+                } for goal in goals
+            ],
+            'companion_info': 'Your caring friend Aria, powered by Llama 3'
         })
         
     except Exception as e:
-        return jsonify({'error': 'Failed to retrieve history'}), 500
+        return jsonify({'error': 'Failed to retrieve emotional history'}), 500
     finally:
         conn.close()
 
+@app.route('/ai_status')
+def ai_status():
+    """Check Aria's emotional support AI status"""
+    try:
+        # Test Llama 3 connection with an emotional support context
+        test_response = support_ai.get_llama3_response("Hi Aria, how are you doing today?")
+        
+        return jsonify({
+            'status': 'ready to listen',
+            'companion': 'Aria',
+            'model': 'Llama 3 (8B)',
+            'api_provider': 'Groq',
+            'message': 'I\'m here and ready to support you emotionally',
+            'test_response': test_response[:150] + "..." if len(test_response) > 150 else test_response
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'experiencing difficulties',
+            'companion': 'Aria',
+            'error': 'I\'m having some technical troubles, but I\'ll be back soon',
+            'technical_error': str(e)
+        }), 500
+
 @app.route('/logout')
 def logout():
+    preferred_name = session.get('preferred_name', 'friend')
     session.clear()
-    return redirect('/')
+    return jsonify({'message': f'Take care, {preferred_name}. Remember, I\'m always here when you need someone to talk to.'})
 
 if __name__ == '__main__':
     init_db()
+    print("Emotional Support AI - Aria")
+    print("Your caring AI companion powered by Llama 3")
+    print("Ready to listen, support, and be a friend to those in need")
     app.run(host='0.0.0.0', port=5000, debug=True)
