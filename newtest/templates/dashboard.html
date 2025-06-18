@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Health Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .chat-container {
+            height: 60vh;
+            min-height: 400px;
+        }
+        
+        .input-glow:focus {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        .typing-indicator {
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { 
+                transform: scale(0);
+            } 40% { 
+                transform: scale(1.0);
+            }
+        }
+        
+        .chat-bubble {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .quick-action {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .quick-action:hover {
+            transform: translateY(-2px);
+        }
+        
+        .bot-avatar {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        /* Fixed text input styling */
+        .text-input {
+            color: #1f2937 !important; /* Dark gray text */
+            background: rgba(255, 255, 255, 0.9) !important; /* Semi-transparent white background */
+        }
+        
+        .text-input::placeholder {
+            color: #6b7280 !important; /* Gray placeholder text */
+        }
+        
+        .text-input:focus {
+            background: rgba(255, 255, 255, 1) !important; /* Solid white when focused */
+            color: #1f2937 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-6 max-w-4xl">
+        <!-- Chat Container -->
+        <div class="glass-effect rounded-2xl p-6 chat-container overflow-hidden">
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="h-full overflow-y-auto space-y-4 pr-2">
+                <!-- Welcome Message -->
+                <div class="chat-bubble">
+                    <div class="flex items-start space-x-3">
+                        <div class="bot-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                            🤖
+                        </div>
+                        <div class="glass-effect rounded-2xl p-4 max-w-md">
+                            <p class="text-sm text-white">Hello! I'm your AI Health Companion. I'm here to help you with:</p>
+                            <ul class="text-xs mt-2 space-y-1 opacity-90 text-white">
+                                <li>• Symptom analysis and guidance</li>
+                                <li>• Health tracking and reminders</li>
+                                <li>• Wellness tips and support</li>
+                                <li>• Emergency guidance when needed</li>
+                            </ul>
+                            <p class="text-sm mt-3 text-white">How are you feeling today? 😊</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button onclick="quickAction('symptoms')" class="quick-action glass-effect p-3 rounded-xl text-center hover:bg-white/20 text-white">
+                <div class="text-2xl mb-1">🤒</div>
+                <div class="text-xs">Symptoms</div>
+            </button>
+            <button onclick="quickAction('vitals')" class="quick-action glass-effect p-3 rounded-xl text-center hover:bg-white/20 text-white">
+                <div class="text-2xl mb-1">💓</div>
+                <div class="text-xs">Log Vitals</div>
+            </button>
+            <button onclick="quickAction('wellness')" class="quick-action glass-effect p-3 rounded-xl text-center hover:bg-white/20 text-white">
+                <div class="text-2xl mb-1">🧘</div>
+                <div class="text-xs">Wellness</div>
+            </button>
+            <button onclick="quickAction('emergency')" class="quick-action glass-effect p-3 rounded-xl text-center hover:bg-white/20 text-white">
+                <div class="text-2xl mb-1">🚨</div>
+                <div class="text-xs">Emergency</div>
+            </button>
+        </div>
+
+        <!-- Input Area -->
+        <div class="mt-4 glass-effect rounded-2xl p-4">
+            <div class="flex items-end space-x-3">
+                <div class="flex-1">
+                    <textarea 
+                        id="user-input" 
+                        placeholder="Tell me how you're feeling or ask me anything about your health..."
+                        class="w-full text-input border border-white/30 rounded-xl p-3 resize-none input-glow focus:outline-none focus:border-blue-400"
+                        rows="2"
+                        onkeypress="handleKeyPress(event)"
+                    ></textarea>
+                </div>
+                <button 
+                    onclick="sendMessage()" 
+                    class="bg-white/30 hover:bg-white/40 rounded-xl p-3 transition-all transform hover:scale-105 disabled:opacity-50 text-white"
+                    id="send-btn"
+                >
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.94 6.94L18.94 12.94C19.52 13.17 19.52 13.83 18.94 14.06L2.94 20.06C2.36 20.29 1.71 19.88 1.71 19.25V13.75L12.71 12L1.71 10.25V4.75C1.71 4.12 2.36 3.71 2.94 3.94L2.94 6.94Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationHistory = [];
+        let userProfile = {
+            name: '',
+            age: '',
+            conditions: ''
+        };
+
+        // Load saved profile (using in-memory storage for demo)
+        const mockStorage = {};
+        
+        function loadProfile() {
+            const saved = JSON.parse(mockStorage['healthbot_profile'] || '{}');
+            userProfile = {...userProfile, ...saved};
+        }
+
+        function saveProfile() {
+            mockStorage['healthbot_profile'] = JSON.stringify(userProfile);
+            
+            if (userProfile.name) {
+                addBotMessage(`Thanks ${userProfile.name}! I've updated your profile. This helps me give you more personalized advice.`);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addUserMessage(message);
+            input.value = '';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Simulate bot response after delay
+            setTimeout(() => {
+                hideTypingIndicator();
+                const response = generateBotResponse(message);
+                addBotMessage(response);
+            }, 1000 + Math.random() * 2000);
+        }
+
+        function addUserMessage(message) {
+            const chatContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-bubble flex justify-end';
+            
+            messageDiv.innerHTML = `
+                <div class="bg-white/30 rounded-2xl p-3 max-w-md">
+                    <p class="text-sm text-white">${message}</p>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+            
+            conversationHistory.push({role: 'user', message: message});
+        }
+
+        function addBotMessage(message) {
+            const chatContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-bubble';
+            
+            messageDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="bot-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                        🤖
+                    </div>
+                    <div class="glass-effect rounded-2xl p-3 max-w-md">
+                        <p class="text-sm text-white">${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+            
+            conversationHistory.push({role: 'bot', message: message});
+        }
+
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chat-messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'chat-bubble';
+            
+            typingDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="bot-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                        🤖
+                    </div>
+                    <div class="glass-effect rounded-2xl p-3">
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-white/70 rounded-full typing-indicator"></div>
+                            <div class="w-2 h-2 bg-white/70 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
+                            <div class="w-2 h-2 bg-white/70 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(typingDiv);
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('chat-messages');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function quickAction(action) {
+            const actions = {
+                symptoms: "I'd like to describe some symptoms I'm experiencing",
+                vitals: "I want to log my vital signs",
+                wellness: "Can you give me some wellness tips?",
+                emergency: "This might be an emergency situation"
+            };
+            
+            const message = actions[action];
+            addUserMessage(message);
+            
+            showTypingIndicator();
+            setTimeout(() => {
+                hideTypingIndicator();
+                const response = generateBotResponse(message, action);
+                addBotMessage(response);
+            }, 1000);
+        }
+
+        function generateBotResponse(userMessage, quickAction = null) {
+            const message = userMessage.toLowerCase();
+            const userName = userProfile.name ? userProfile.name : 'there';
+            
+            // Emergency responses
+            if (message.includes('emergency') || message.includes('urgent') || message.includes('chest pain') || message.includes('can\'t breathe')) {
+                return `🚨 ${userName}, if this is a medical emergency, please call 911 immediately or go to the nearest emergency room. Your safety is my top priority. For chest pain, difficulty breathing, or severe symptoms, don't wait - seek immediate medical attention.`;
+            }
+            
+            // Symptom analysis
+            if (message.includes('symptom') || message.includes('pain') || message.includes('hurt') || message.includes('sick') || message.includes('feel')) {
+                return `I understand you're not feeling well, ${userName}. Can you tell me more about your symptoms? For example:<br><br>• Where is the discomfort located?<br>• When did it start?<br>• How would you rate the severity (1-10)?<br>• Any other symptoms?<br><br>Remember, I can provide general guidance, but it's always best to consult with a healthcare professional for proper diagnosis and treatment. 💙`;
+            }
+            
+            // Vitals logging
+            if (message.includes('vital') || message.includes('blood pressure') || message.includes('heart rate') || message.includes('temperature')) {
+                return `Great idea to track your vitals, ${userName}! 📊 Regular monitoring helps identify patterns. What measurements would you like to log?<br><br>• Blood pressure (systolic/diastolic)<br>• Heart rate (bpm)<br>• Temperature (°F)<br>• Weight<br>• Blood sugar (if applicable)<br><br>You can tell me the values and I'll help you understand if they're in normal ranges. What would you like to record?`;
+            }
+            
+            // Wellness and general health
+            if (message.includes('wellness') || message.includes('healthy') || message.includes('tips') || message.includes('advice')) {
+                const tips = [
+                    "Stay hydrated - aim for 8 glasses of water daily 💧",
+                    "Get 7-9 hours of quality sleep each night 😴",
+                    "Take a 10-minute walk outdoors for fresh air and movement 🚶‍♂️",
+                    "Practice deep breathing for 5 minutes to reduce stress 🧘‍♀️",
+                    "Eat colorful fruits and vegetables for essential nutrients 🥗"
+                ];
+                const randomTip = tips[Math.floor(Math.random() * tips.length)];
+                
+                return `Here's a wellness tip for you, ${userName}: ${randomTip}<br><br>Small daily habits make a big difference in your overall health! Is there a specific area of wellness you'd like to focus on? I'm here to support your health journey. 🌟`;
+            }
+            
+            // Greetings and mood
+            if (message.includes('hello') || message.includes('hi') || message.includes('how are you')) {
+                return `Hello ${userName}! 😊 I'm doing well and ready to help you with your health needs. How are you feeling today? Remember, I'm here to support you with any health questions or concerns you might have.`;
+            }
+            
+            // Default supportive response
+            const supportiveResponses = [
+                `Thank you for sharing that with me, ${userName}. I'm here to listen and help. Can you tell me more about what's on your mind regarding your health?`,
+                `I appreciate you reaching out, ${userName}. Your health and wellbeing matter to me. What specific aspect would you like guidance on?`,
+                `I'm glad you're taking an active role in your health, ${userName}. How can I best support you today?`
+            ];
+            
+            return supportiveResponses[Math.floor(Math.random() * supportiveResponses.length)];
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProfile();
+        });
+    </script>
+</body>
+</html>

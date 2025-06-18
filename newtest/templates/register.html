@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto glass-effect rounded-lg p-8">
+    <h2 class="text-2xl font-bold text-center mb-6">Create Account</h2>
+    
+    <form id="registerForm" class="space-y-4">
+        <input type="text" id="username" placeholder="Username" required
+               class="w-full p-3 border rounded-lg">
+        <input type="email" id="email" placeholder="Email" required
+               class="w-full p-3 border rounded-lg">
+        <input type="password" id="password" placeholder="Password" required
+               class="w-full p-3 border rounded-lg">
+        <input type="number" id="age" placeholder="Age"
+               class="w-full p-3 border rounded-lg">
+        <select id="gender" class="w-full p-3 border rounded-lg">
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+        </select>
+        
+        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-lg">
+            Register
+        </button>
+    </form>
+    
+    <p class="text-center mt-4">
+        Already have an account? <a href="/login" class="text-blue-500 hover:underline">Login</a>
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        age: document.getElementById('age').value,
+        gender: document.getElementById('gender').value
+    };
+    
+    try {
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert('Registration successful!');
+            window.location.href = '/login';
+        } else {
+            alert(result.error);
+        }
+    } catch (error) {
+        alert('Registration failed');
+    }
+});
+{% endblock %}

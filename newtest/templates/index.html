@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <div class="glass-effect rounded-lg p-8 max-w-2xl mx-auto">
+        <h2 class="text-4xl font-bold text-gray-800 mb-4">Welcome to AI Health Assistant</h2>
+        <p class="text-gray-600 mb-8">Your intelligent healthcare companion powered by AI</p>
+        
+        <div class="space-y-4">
+            <a href="/register" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg inline-block">
+                Get Started
+            </a>
+            <a href="/login" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg inline-block ml-4">
+                Login
+            </a>
+        </div>
+        
+        <div class="mt-12 grid md:grid-cols-3 gap-6">
+            <div class="text-center">
+                <div class="bg-green-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <span class="text-2xl">🏥</span>
+                </div>
+                <h3 class="font-bold mb-2">AI Symptom Analysis</h3>
+                <p class="text-sm text-gray-600">Get instant analysis of your symptoms with AI-powered insights</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <span class="text-2xl">📊</span>
+                </div>
+                <h3 class="font-bold mb-2">Health Tracking</h3>
+                <p class="text-sm text-gray-600">Monitor your vital signs and track health trends over time</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-purple-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <span class="text-2xl">💡</span>
+                </div>
+                <h3 class="font-bold mb-2">Personalized Recommendations</h3>
+                <p class="text-sm text-gray-600">Receive tailored health advice based on your profile and history</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
