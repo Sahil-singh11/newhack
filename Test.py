@@ -1,1 +1,1 @@
-print("Yadav gayboi")
+print("Yadav gayboi nigga")
